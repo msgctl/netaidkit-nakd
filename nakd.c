@@ -1,4 +1,3 @@
-#include <nakd.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
@@ -9,50 +8,9 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "nakd.h"
 #include "log.h"
 #include "misc.h"
-
-int handle_connection(int sock) {
-    struct sockaddr_un client_addr;
-    socklen_t client_len = sizeof(struct sockaddr_un);
-    char *response, message_buf[MAX_MSG_LEN + 1];
-    int n;
-
-    memset(message_buf, 0x00, MAX_MSG_LEN + 1);
-
-    /* TODO: GRAB CREDENTIALS OF CONNECTING PROCESS */
-    printf("CONNECTION FROM USER: [%s]\n", "USER");
-
-    if ((n = recvfrom(sock, message_buf, MAX_MSG_LEN, 0,
-                      (struct sockaddr *) &client_addr, &client_len)) < 0)
-        p_error("recvfrom()", NULL);
-
-    message_buf[n] = 0x00;
-
-    if ((response = handle_message(message_buf)) == NULL)
-        p_error("handle_message()", "Could not generate response.");
-
-    if (sendto(sock, response, strlen(response), 0,
-               (struct sockaddr *) &client_addr, client_len) < strlen(response))
-        p_error("sendto()", NULL);
-
-    free(response);
-    return 0;
-}
-
-char *handle_message(char *message_buf) {
-    message *msg;
-    command *cmd = NULL;
-    char *response = NULL;
-
-    if ((msg = parse_message(MSG_TYPE_COMMAND, message_buf)) == NULL)
-        return strdup("Invalid command.\n");
-
-    if (msg->cmd);
-        response = msg->cmd->handler(msg->args);
-
-    return response;
-}
 
 /* Create file containing pid as a string and obtain a write lock for it. */
 int writePid(char *pid_path) {
@@ -87,6 +45,7 @@ int main(int argc, char *argv[]) {
     int pid_fd, sock, n_sock_path = strlen(SOCK_PATH);
 
     nakd_log_init();
+    nakd_use_syslog(0);
 
     /* Check if nakd is already running. */
     if ((pid_fd = writePid(PID_PATH)) == -1)
@@ -138,10 +97,12 @@ int main(int argc, char *argv[]) {
         if ((c_sock = accept(sock, (struct sockaddr *) &client, &len)) == -1)
             p_error("accept", NULL);
 
+        nakd_log(L_INFO, "Connection accepted");
+
         if ((handler_pid = fork()) == -1)
             p_error("fork", NULL);
         else if (handler_pid == 0) {
-            return handle_connection(c_sock);
+            return nakd_handle_connection(c_sock);
         } else {
             waitpid(handler_pid, NULL, WUNTRACED);
         }

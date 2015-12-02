@@ -38,9 +38,13 @@ void nakd_log(int priority, const char *format, ...) {
         return;
 
     va_start(vl, format);
-    if (use_syslog)
+    if (use_syslog) {
         vsyslog(log_class[priority], format, vl);
-    else
+    } else {
+        fprintf(stderr, "[%s] ", log_class[priority]);
         vfprintf(stderr, format, vl);
+        fprintf(stderr, "\n");
+    }
+
     va_end(vl);
 }

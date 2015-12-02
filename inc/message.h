@@ -1,14 +1,6 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
-
-#include <command.h>
-#include <stdlib.h>
-
-/* Max size of command sent over domain socket. */
-#define MAX_MSG_LEN     262144
-
-/* Max number of arguments passed along with a command. */
-#define MAX_MSG_ARG     8
+#include <json-c/json.h>
 
 typedef enum {
     MSG_TYPE_UNKNOWN,
@@ -22,15 +14,12 @@ typedef enum {
     MSG_STATUS_ERROR
 } msg_status;
 
-typedef struct {
-    char payload[MAX_MSG_LEN + 1];
-    char **args; /* must end with NULL */
-    msg_type type;
-    msg_status status;
-    command *cmd;
-} message;
-
-message *parse_message(msg_type type, char *data);
-char **parse_args(char *data);
+const char *nakd_message_type_str(msg_type type);
+const char *nakd_message_status_str(msg_status status);
+void nakd_message_set_type(json_object *jmsg, msg_type type);
+msg_type nakd_message_type(const char *typestr);
+void nakd_message_set_status(json_object *jmsg, msg_status status);
+msg_status nakd_message_status(const char *statusstr);
+json_object *nakd_handle_message(json_object *jmsg);
 
 #endif

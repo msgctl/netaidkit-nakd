@@ -1,17 +1,16 @@
 #ifndef COMMAND_H
 #define COMMAND_H
+#include <json-c/json.h>
 
-/* Length of the name of a command is static. */
-#define CMD_NAME_LEN     8
-
-typedef char* (*cmd_handler)(char **args);
+typedef json_object *(*cmd_handler)(json_object *jcmd, void *priv);
 
 typedef struct {
-    char name[CMD_NAME_LEN];
+    char *name;
     cmd_handler handler;
-    int arg_count;
+    void *priv;
 } command;
 
-command *get_command(char *cmd_name);
+command *nakd_get_command(const char *cmd_name);
+json_object *nakd_call_command(const char *cmd_name, json_object *jcmd);
 
 #endif

@@ -1,6 +1,6 @@
 #ifndef LOG_H
 #define LOG_H
-#define DEFAULT_LOG_LEVEL L_NOTICE
+#define DEFAULT_LOG_LEVEL L_DEBUG
 
 enum {
     L_CRIT,

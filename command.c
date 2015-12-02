@@ -1,41 +1,49 @@
-#include <wifi.h>
-#include <stage.h>
-#include <inet.h>
-#include <update.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <command.h>
-
-#define N_COMMANDS  (sizeof(commands) / sizeof(commands[0]))
+#include "command.h"
+#include "misc.h"
+#include "shell.h"
+#include "log.h"
 
 static command commands[] = {
-    { "wifiscan", scan_wifi, 0 },
-    { "apconfig", ap_config, 2 },
-    { "getapnam", get_ap_name, 0 },
-    { "wificonn", connect_wifi, 2 },
-    { "goonline", go_online, 0 },
-    { "inetstat", inet_stat, 0 },
-    { "nrouting", toggle_routing, 1},
-    { "wlaninfo", wlan_info, 1},
-    { "setstage", set_stage, 1 },
-    { "getstage", get_stage, 0 },
-    { "stagetor", toggle_tor, 1 },
-    { "stagevpn", toggle_vpn, 1 },
-    { "doupdate", do_update, 1},
-    { "broadcst", toggle_broadcast, 1},
-    { "isportal", detect_portal, 0}
+//    { "getapnam", get_ap_name, 0 },
+    { "wifiscan", cmd_shell,   "/nak/scripts/iwinfo.sh"        },
+    { "apconfig", cmd_shell,   "/nak/scripts/setup_ap.sh"      },
+    { "wificonn", cmd_shell,   "/nak/scripts/setup_wan.sh"     },
+    { "goonline", cmd_shell,   "/nak/scripts/go_online.sh"     },
+    { "inetstat", cmd_shell,   "/nak/scripts/get_inetstat.sh"  },
+    { "nrouting", cmd_shell,   "/nak/scripts/toggle_routing.sh"},
+    { "wlaninfo", cmd_shell,   "/nak/scripts/wlan_info.sh"     },
+    { "setstage", cmd_shell,   "/nak/scripts/set_stage.sh"     },
+    { "getstage", cmd_shell,   "/nak/scripts/get_stage.sh"     },
+    { "stagetor", cmd_shell,   "/nak/scripts/toggle_tor.sh"    },
+    { "stagevpn", cmd_shell,   "/nak/scripts/toggle_vpn.sh"    },
+    { "doupdate", cmd_shell,   "/nak/scripts/do_update.sh"     },
+    { "broadcst", cmd_shell,   "/nak/scripts/toggle_broadcast.sh"},
+    { "isportal", cmd_shell,   "/nak/scripts/detect_portal.sh"   }
 };
 
-command *get_command(char *cmd_name) {
+command *nakd_get_command(const char *cmd_name) {
     command *cmd = NULL;
-
     int i;
-    for (i = 0; i < N_COMMANDS; i++) {
-        if ((strncmp(cmd_name, commands[i].name, 8)) == 0) {
+
+    for (i = 0; i < N_ELEMENTS(commands); i++) {
+        if ((strcmp(cmd_name, commands[i].name)) == 0) {
             cmd = &commands[i];
             break;
         }
     }
 
     return cmd;
+}
+
+json_object *nakd_call_command(const char *cmd_name, json_object *jcmd) {
+    command *cmd = nakd_get_command(cmd_name);
+
+    if (cmd == NULL) {
+        nakd_log(L_NOTICE, "Couldn't find command %s.", cmd_name);
+        return NULL;
+    }
+
+    return cmd->handler(jcmd, cmd->priv);
 }

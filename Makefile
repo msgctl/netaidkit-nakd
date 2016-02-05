@@ -6,7 +6,7 @@ DEPEND = $(patsubst %.c, $(BUILD)/%.d, $(SRC))
 
 .PRECIOUS: $(DEPEND)
 
-INC = -Iinc -I$(STAGING_DIR)/usr/include
+INC = -Iinc
 CFLAGS += $(INC)
 
 #LDLIBS += -ljson-c -lubus -lubox -lblobmsg_json -luci

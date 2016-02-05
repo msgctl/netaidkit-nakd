@@ -6,10 +6,10 @@ DEPEND = $(patsubst %.c, $(BUILD)/%.d, $(SRC))
 
 .PRECIOUS: $(DEPEND)
 
-INC = -Iinc
+INC = -Iinc -I$(STAGING_DIR)/usr/include
 CFLAGS += $(INC)
 
-LDLIBS += -ljson-c -lubus -lubox -lblobmsg_json -luci
+#LDLIBS += -ljson-c -lubus -lubox -lblobmsg_json -luci
 
 TARGETS = $(BUILD)/nakd
 
@@ -18,7 +18,7 @@ all: $(TARGETS)
 -include $(DEPEND)
 
 $(BUILD)/nakd: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
 
 $(BUILD)/%.d: %.c
 	$(CC) $(CFLAGS) -MM $< -o $(BUILD)/$*.d

@@ -5,7 +5,7 @@
 char *do_update(char **args) {
     char *response = NULL;
 
-    response = do_command("/nak/scripts/do_update.sh", args);
+    response = do_command(NAKD_SCRIPT("do_update.sh"), args);
 
     return response;
 }

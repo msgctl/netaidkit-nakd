@@ -5,7 +5,7 @@
 char *get_stage(char **args) {
     char *response = NULL;
 
-    response = do_command("/nak/scripts/get_stage.sh", args);
+    response = do_command(NAKD_SCRIPT("get_stage.sh"), args);
 
     return response;
 }
@@ -13,7 +13,7 @@ char *get_stage(char **args) {
 char *set_stage(char **args) {
     char *response = NULL;
 
-    response = do_command("/nak/scripts/set_stage.sh", args);
+    response = do_command(NAKD_SCRIPT("set_stage.sh"), args);
 
     return response;
 }
@@ -21,7 +21,7 @@ char *set_stage(char **args) {
 char *toggle_tor(char **args) {
     char *response = NULL;
 
-    response = do_command("/nak/scripts/toggle_tor.sh", args);
+    response = do_command(NAKD_SCRIPT("toggle_tor.sh"), args);
 
     return response;
 }
@@ -29,7 +29,7 @@ char *toggle_tor(char **args) {
 char *toggle_vpn(char **args) {
     char *response = NULL;
 
-    response = do_command("/nak/scripts/toggle_vpn.sh", args);
+    response = do_command(NAKD_SCRIPT("toggle_vpn.sh"), args);
 
     return response;
 }

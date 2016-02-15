@@ -8,4 +8,4 @@ then
 fi
 
 uci commit wireless
-/nak/scripts/restart_iface.sh wlan
+/usr/share/nakd/scripts/restart_iface.sh wlan

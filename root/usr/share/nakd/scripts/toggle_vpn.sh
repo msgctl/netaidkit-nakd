@@ -1,6 +1,6 @@
 #!/bin/sh
 
-/nak/scripts/reset_iptables.sh # iptables flushing
+/usr/share/nakd/scripts/reset_iptables.sh # iptables flushing
 
 if [ $1 = "on" ];then
 
@@ -12,7 +12,7 @@ if [ $1 = "on" ];then
     > /var/log/openvpn.log
     openvpn --log-append /var/log/openvpn.log --daemon --config /nak/ovpn/current.ovpn
 
-    /nak/scripts/set_stage.sh 4
+    /usr/share/nakd/scripts/set_stage.sh 4
     echo "1" > /sys/class/leds/gl-connect\:green\:lan/brightness
     echo "0" > /sys/class/leds/gl-connect\:red\:wlan/brightness
 elif [ $1 = "off" ]
@@ -24,7 +24,7 @@ then
 
     killall -9 openvpn
 
-    /nak/scripts/set_stage.sh 2
+    /usr/share/nakd/scripts/set_stage.sh 2
     echo "0" > /sys/class/leds/gl-connect\:green\:lan/brightness
     echo "1" > /sys/class/leds/gl-connect\:red\:wlan/brightness
 fi

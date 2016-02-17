@@ -1,6 +1,6 @@
 #!/bin/sh
 
-/nak/scripts/reset_iptables.sh # iptables flushing
+/usr/share/nakd/scripts/reset_iptables.sh # iptables flushing
 
 uci set firewall.@redirect[0].enabled=0;
 uci commit firewall;

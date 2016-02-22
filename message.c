@@ -26,9 +26,11 @@ const char *nakd_message_type_str(msg_type type) {
 msg_type nakd_message_type(const char *typestr) {
    const char **iter = msg_type_str;
    for (; iter < ARRAY_END(msg_type_str); iter++) {
-        if (!strcmp(typestr, *iter))
+        if (!strcasecmp(typestr, *iter))
             return (msg_type)(ARRAY_ELEMENT_NUMBER(iter, msg_type_str));
    }
+   nakd_log(L_DEBUG, "Returning MSG_TYPE_UNKNOWN for type string '%s'",
+                                                              typestr);
    return MSG_TYPE_UNKNOWN;
 }
 
@@ -39,9 +41,11 @@ const char *nakd_message_status_str(msg_status status) {
 msg_status nakd_message_status(const char *statusstr) {
    const char **iter = msg_status_str;
    for (; iter < ARRAY_END(msg_status_str); iter++) {
-        if (!strcmp(statusstr, *iter))
+        if (!strcasecmp(statusstr, *iter))
             return (msg_status)(ARRAY_ELEMENT_NUMBER(iter, msg_status_str));
    }
+   nakd_log(L_DEBUG, "Returning MSG_STATUS_UNKNOWN for status string '%s'",
+                                                                statusstr);
    return MSG_STATUS_UNKNOWN;
 }
 

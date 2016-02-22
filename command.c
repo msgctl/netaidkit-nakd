@@ -28,7 +28,7 @@ command *nakd_get_command(const char *cmd_name) {
     int i;
 
     for (i = 0; i < N_ELEMENTS(commands); i++) {
-        if ((strcmp(cmd_name, commands[i].name)) == 0) {
+        if ((strcasecmp(cmd_name, commands[i].name)) == 0) {
             cmd = &commands[i];
             break;
         }

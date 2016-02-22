@@ -19,7 +19,7 @@ static void toggle_rule(const char *hook_name, const char *state,
         .s = option->section
     };
 
-    const char *cvalue = strcmp(hook_name, "nak_hooks_enable") ?
+    const char *cvalue = strcasecmp(hook_name, "nak_hooks_enable") ?
         "option enabled 1" : "option enabled 0";
     char *value = strdup(cvalue);
 

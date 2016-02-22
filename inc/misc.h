@@ -4,7 +4,7 @@
 #define N_ELEMENTS(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define ARRAY_END(arr) (arr + N_ELEMENTS(arr))
-#define ARRAY_ELEMENT_NUMBER(ptr, arr) ((int)((ptr - arr)/(sizeof ptr)))
+#define ARRAY_ELEMENT_NUMBER(ptr, arr) ((int)(ptr - arr))
 
 void p_error(const char *ctx, const char *err);
 

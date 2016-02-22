@@ -13,7 +13,7 @@
 static int use_syslog = 1;
 static int loglevel = DEFAULT_LOG_LEVEL;
 
-static int *syslog_loglevel[] = {
+static int syslog_loglevel[] = {
     [L_CRIT] = LOG_CRIT,
     [L_WARNING] = LOG_WARNING,
     [L_NOTICE] = LOG_NOTICE,
@@ -45,19 +45,24 @@ void nakd_log_close() {
     closelog();
 }
 
-void nakd_log(int priority, const char *format, ...) {
+void _nakd_log(int priority, const char *format, const char *func,
+                                const char *file, int line, ...) {
     va_list vl;
+    char _fmt[256];
 
     if (priority > loglevel)
         return;
 
     va_start(vl, format);
     if (use_syslog) {
-        vsyslog(syslog_loglevel[priority], format, vl);
+        snprintf(_fmt, sizeof(_fmt), "[%s:%d] %s", file, line, format);
+
+        vsyslog(syslog_loglevel[priority], _fmt, vl);
     } else {
-        fprintf(stderr, "[%s] ", loglevel_string[priority]);
-        vfprintf(stderr, format, vl);
-        fprintf(stderr, "\n");
+        snprintf(_fmt, sizeof(_fmt), "[%s] [%s:%d] %s\n",
+            loglevel_string[priority], file, line, format);
+
+        vfprintf(stderr, _fmt, vl);
     }
 
     va_end(vl);

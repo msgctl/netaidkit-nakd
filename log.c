@@ -55,12 +55,13 @@ void _nakd_log(int priority, const char *format, const char *func,
 
     va_start(vl, format);
     if (use_syslog) {
-        snprintf(_fmt, sizeof(_fmt), "[%s:%d] %s", file, line, format);
+        snprintf(_fmt, sizeof(_fmt), "[%s:%d, %s] %s", file, line, func,
+                                                                format);
 
         vsyslog(syslog_loglevel[priority], _fmt, vl);
     } else {
-        snprintf(_fmt, sizeof(_fmt), "[%s] [%s:%d] %s\n",
-            loglevel_string[priority], file, line, format);
+        snprintf(_fmt, sizeof(_fmt), "[%s] [%s:%d, %s] %s\n",
+            loglevel_string[priority], file, line, func, format);
 
         vfprintf(stderr, _fmt, vl);
     }

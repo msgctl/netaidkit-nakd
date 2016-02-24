@@ -52,6 +52,10 @@ int nakd_handle_connection(int sock) {
         } while ((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
 
         if (jerr == json_tokener_success) {
+            /* doesn't allocate memory */
+            const char *jmsg_string = json_object_to_json_string(jmsg);
+            nakd_log(L_DEBUG, "Got message: %s", jmsg_string);
+
             jresponse = nakd_handle_message(jmsg);
             jrstr = json_object_get_string(jresponse);
 

@@ -30,6 +30,13 @@ int nakd_handle_connection(int sock) {
 
     for (;;) {
         do {
+            if (jerr == json_tokener_continue) {
+                nakd_log(L_DEBUG, "Parsing incoming message, offset: %d",
+                                                      jtok->char_offset);
+                nakd_log(L_DEBUG, "jerr == json_tokener_continue, "
+                                              "reading some more");
+            }
+
             /* If there was another JSON string in the middle of the buffer,
              * start with an offset and don't call recvfrom() just yet.
              */
@@ -37,23 +44,31 @@ int nakd_handle_connection(int sock) {
             if (!parse_offset) {
                 if ((nb_read = recvfrom(sock, message_buf, MAX_MSG_LEN, 0,
                           (struct sockaddr *) &client_addr, &client_len)) < 0) { 
-                    nakd_log(L_DEBUG, "recvfrom() < 0, closing connection.");
+                    nakd_log(L_DEBUG, "recvfrom() < 0, closing connection (%s)",
+                                                             strerror(nb_read));
+                    goto ret;
+                } else if (!nb_read) {
+                    /* Handle orderly shutdown. */
+                    nakd_log(L_DEBUG, "Client hung up.");
                     goto ret;
                 }
+                nakd_log(L_DEBUG, "Read %d bytes.", nb_read);
+
                 /* remaining bytes to parse */
                 nb_parse = nb_read;
             } else {
                 nb_parse = nb_read - jtok->char_offset;
             }
-            nakd_log(L_DEBUG, "Parsing incoming message, offset: %d",
-                                                  jtok->char_offset);
 
             /* partial JSON strings are stored in tokener context */
             jmsg = json_tokener_parse_ex(jtok, message_buf + parse_offset,
-                                                               nb_parse);
+                                                                nb_parse);
         } while ((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
 
         if (jerr == json_tokener_success) {
+            nakd_log(L_DEBUG, "Parsed a complete message of %d bytes.",
+                                                    jtok->char_offset);
+
             /* doesn't allocate memory */
             const char *jmsg_string = json_object_to_json_string(jmsg);
             nakd_log(L_DEBUG, "Got message: %s", jmsg_string);

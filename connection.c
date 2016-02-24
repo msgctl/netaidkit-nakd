@@ -45,6 +45,8 @@ int nakd_handle_connection(int sock) {
             } else {
                 nb_parse = nb_read - jtok->char_offset;
             }
+            nakd_log(L_DEBUG, "Parsing incoming message, offset: %d",
+                                                  jtok->char_offset);
 
             /* partial JSON strings are stored in tokener context */
             jmsg = json_tokener_parse_ex(jtok, message_buf + parse_offset,
@@ -72,6 +74,8 @@ int nakd_handle_connection(int sock) {
                 jrstr += nb_sent;
             }
 
+            nakd_log(L_DEBUG, "Response sent: %s",
+                json_object_to_json_string(jresponse));
             json_object_put(jresponse), jresponse = NULL;
         } else {
             nakd_log(L_NOTICE, "Couldn't parse client JSON message: %s."

@@ -65,6 +65,8 @@ char *nakd_do_command(const char *script, char *args[]) {
     int pipe_fd[2];
     char response[MAX_SHELL_RESULT_LEN + 1];
 
+    nakd_log(L_DEBUG, "execve: %s", script);
+
     memset(response, 0, MAX_SHELL_RESULT_LEN + 1);
 
     if (pipe(pipe_fd) == -1) {
@@ -148,6 +150,7 @@ json_object *nakd_json_do_command(const char *script, json_object *jcmd) {
     nakd_message_set_status(jresponse, MSG_STATUS_SUCCESS);
 
 response:
+    nakd_log(L_DEBUG, "Returning response.");
     return jresponse;
 }
 

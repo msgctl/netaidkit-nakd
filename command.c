@@ -7,20 +7,20 @@
 
 static command commands[] = {
 //    { "getapnam", get_ap_name, 0 },
-    { "wifiscan", cmd_shell,   NAKD_SCRIPT("iwinfo.sh")        },
-    { "apconfig", cmd_shell,   NAKD_SCRIPT("setup_ap.sh")      },
-    { "wificonn", cmd_shell,   NAKD_SCRIPT("setup_wan.sh")     },
-    { "goonline", cmd_shell,   NAKD_SCRIPT("go_online.sh")     },
-    { "inetstat", cmd_shell,   NAKD_SCRIPT("get_inetstat.sh")  },
-    { "nrouting", cmd_shell,   NAKD_SCRIPT("toggle_routing.sh")},
-    { "wlaninfo", cmd_shell,   NAKD_SCRIPT("wlan_info.sh")     },
-    { "setstage", cmd_shell,   NAKD_SCRIPT("set_stage.sh")     },
-    { "getstage", cmd_shell,   NAKD_SCRIPT("get_stage.sh")     },
-    { "stagetor", cmd_shell,   NAKD_SCRIPT("toggle_tor.sh")    },
-    { "stagevpn", cmd_shell,   NAKD_SCRIPT("toggle_vpn.sh")    },
-    { "doupdate", cmd_shell,   NAKD_SCRIPT("do_update.sh")     },
-    { "broadcst", cmd_shell,   NAKD_SCRIPT("toggle_broadcast.sh")},
-    { "isportal", cmd_shell,   NAKD_SCRIPT("detect_portal.sh")   }
+    CMD_SHELL_NAKD_ARGV("wifiscan", "iwinfo.sh", "wlan0", "scan"),
+    CMD_SHELL_NAKD("apconfig", "setup_ap.sh"),
+    CMD_SHELL_NAKD("wificonn", "setup_wan.sh"),
+    CMD_SHELL_NAKD("goonline", "go_online.sh"),
+    CMD_SHELL_NAKD("inetstat", "get_inetstat.sh"),
+    CMD_SHELL_NAKD("nrouting", "toggle_routing.sh"),
+    CMD_SHELL_NAKD("wlaninfo", "wlan_info.sh"),
+    CMD_SHELL_NAKD("setstage", "set_stage.sh"),
+    CMD_SHELL_NAKD("getstage", "get_stage.sh"),
+    CMD_SHELL_NAKD("stagetor", "toggle_tor.sh"),
+    CMD_SHELL_NAKD("stagevpn", "toggle_vpn.sh"),
+    CMD_SHELL_NAKD("doupdate", "do_update.sh"),
+    CMD_SHELL_NAKD("broadcst", "toggle_broadcast.sh"),
+    CMD_SHELL_NAKD("isportal", "detect_portal.sh"),
 };
 
 command *nakd_get_command(const char *cmd_name) {

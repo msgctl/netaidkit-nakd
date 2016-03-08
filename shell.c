@@ -7,6 +7,7 @@
 #include "shell.h"
 #include "message.h"
 #include "log.h"
+#include "misc.h"
 
 #define PIPE_READ       0
 #define PIPE_WRITE      1

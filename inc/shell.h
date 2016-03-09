@@ -3,7 +3,7 @@
 #include <json-c/json.h>
 #include "command.h"
 
-#define MAX_SHELL_RESULT_LEN 4096
+#define MAX_SHELL_RESULT_LEN 262144
 
 #define NAKD_SCRIPT_PATH "/usr/share/nakd/scripts/"
 #define NAKD_SCRIPT(filename) (NAKD_SCRIPT_PATH filename)

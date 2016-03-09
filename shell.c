@@ -31,7 +31,7 @@ static char **parse_args(char *data) {
 }
 
 /* create {"/bin/sh", "script", args[0], ..., args[n], NULL} on heap */
-static char **build_argv(const char *script, char *args[]) {
+static char **build_argv(const char *script, const char *args[]) {
     int i, n_args = 0;
     char **argv = NULL;
 
@@ -58,15 +58,29 @@ static void free_argv(char **argv) {
     free(argv);
 }
 
+static void log_execve(const char *script, const char *args[]) {
+    char execve_log[512];
+    int format_len = 0;
+    const char **arg;
+
+    format_len += snprintf(execve_log, sizeof(execve_log)
+                     - format_len, "execve: %s", script);
+    for (arg = args; *arg != NULL; arg++)
+        format_len += snprintf(execve_log + format_len, sizeof(execve_log)
+                                               - format_len, " %s", *arg);
+
+    nakd_log(L_DEBUG, execve_log);
+}
+
 /* Returns NULL if the command failed.
  * args must end with a NULL pointer.
  */
-char *nakd_do_command(const char *script, char *args[]) {
+char *nakd_do_command(const char *script, const char *args[]) {
     pid_t pid;
     int pipe_fd[2];
     char response[MAX_SHELL_RESULT_LEN + 1];
 
-    nakd_log(L_DEBUG, "execve: %s", script);
+    log_execve(script, args);
 
     memset(response, 0, MAX_SHELL_RESULT_LEN + 1);
 
@@ -125,23 +139,33 @@ static char **json_get_args(json_object *msg) {
     return argv;
 }
 
-json_object *nakd_json_do_command(const char *script, json_object *jcmd) {
+json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
     json_object *jresponse;
     json_object *jcmd_output;
     char *output;
-    char **argv;
-    
+    const char **argv;
+   
+    nakd_assert(spec->path != NULL);
+ 
     jresponse = json_object_new_object();
     nakd_message_set_type(jresponse, MSG_TYPE_REPLY);
 
-    if ((argv = json_get_args(jcmd)) == NULL) {
-        nakd_log(L_NOTICE, "Couldn't get shell command arguments for %s", script);
-        nakd_message_set_status(jresponse, MSG_STATUS_ERROR);
-        goto response;
+    /* argv defined in nakd take precedence over request */
+    if (spec->argv != NULL) {
+        nakd_log(L_DEBUG, "Using predefined arguments for \"%s\"",
+                                                      spec->path);
+        argv = spec->argv;
+    } else {
+        if ((argv = (const char **)(json_get_args(jcmd))) == NULL) {
+            nakd_log(L_NOTICE, "Couldn't get shell command arguments for %s",
+                                                                 spec->path);
+            nakd_message_set_status(jresponse, MSG_STATUS_ERROR);
+            goto response;
+        }
     }
 
-    if ((output = nakd_do_command(script, argv)) == NULL) {
-        nakd_log(L_NOTICE, "Error while running shell command %s", script);
+    if ((output = nakd_do_command(spec->path, argv)) == NULL) {
+        nakd_log(L_NOTICE, "Error while running shell command %s", spec->path);
         nakd_message_set_status(jresponse, MSG_STATUS_ERROR);
         goto response;
     }
@@ -153,9 +177,4 @@ json_object *nakd_json_do_command(const char *script, json_object *jcmd) {
 response:
     nakd_log(L_DEBUG, "Returning response.");
     return jresponse;
-}
-
-json_object *cmd_shell(json_object *jcmd, void *priv) {
-    const char *executable = priv;
-    return nakd_json_do_command(executable, jcmd);
 }

@@ -7,7 +7,7 @@ DEPEND = $(patsubst %.c, $(BUILD)/%.d, $(SRC))
 .PRECIOUS: $(DEPEND)
 
 INC = -Iinc
-CFLAGS += $(INC)
+CFLAGS += -std=c99 -D_GNU_SOURCE $(INC)
 
 LDLIBS += -ljson-c -lubus -lubox -lblobmsg_json -luci
 

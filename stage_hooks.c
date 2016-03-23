@@ -2,7 +2,7 @@
 #include <string.h>
 #include "stage_hooks.h"
 #include "hooks.h"
-#include "misc.h"
+#include "log.h"
 
 static void toggle_rule(const char *hook_name, const char *state,
                                     struct uci_option *option) {

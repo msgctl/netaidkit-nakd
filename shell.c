@@ -7,7 +7,6 @@
 #include "shell.h"
 #include "message.h"
 #include "log.h"
-#include "misc.h"
 
 #define PIPE_READ       0
 #define PIPE_WRITE      1
@@ -59,7 +58,7 @@ static void free_argv(char **argv) {
 }
 
 static void log_execve(const char *script, const char *args[]) {
-    char execve_log[512];
+    char execve_log[1024];
     int format_len = 0;
     const char **arg;
 
@@ -78,20 +77,29 @@ static void log_execve(const char *script, const char *args[]) {
 char *nakd_do_command(const char *script, const char *args[]) {
     pid_t pid;
     int pipe_fd[2];
-    char response[MAX_SHELL_RESULT_LEN + 1];
+    char *response = NULL;
+    char *truncated = NULL;
 
+    nakd_log_execution_point();
     log_execve(script, args);
 
-    memset(response, 0, MAX_SHELL_RESULT_LEN + 1);
+    response = malloc(MAX_SHELL_RESULT_LEN);
+    if (response == NULL) {
+        nakd_log(L_WARNING, "Couldn't allocate %d bytes for command response",
+                                                        MAX_SHELL_RESULT_LEN);
+        goto ret;
+    }
+
+    memset(response, 0, MAX_SHELL_RESULT_LEN);
 
     if (pipe(pipe_fd) == -1) {
-        p_error("pipe()", "Could not create pipe.");
-        return NULL;
+        nakd_terminate("pipe()");
+        goto ret;
     }
 
     pid = fork();
     if (pid < 0) {
-        return NULL;
+        goto ret;
     } else if (pid == 0) { /* child */
         close(pipe_fd[PIPE_READ]);
         dup2(pipe_fd[PIPE_WRITE], 1);
@@ -101,23 +109,27 @@ char *nakd_do_command(const char *script, const char *args[]) {
         execve(argv[0], argv, NULL);
 
         free_argv(argv);
-        p_error("execve()", "Could not execute command.");
-        exit(-1);
+        nakd_terminate("execve()");
     } else { /* parent */
         int n = 0;
         waitpid(pid, NULL, WUNTRACED);
 
         close(pipe_fd[PIPE_WRITE]);
-        if ((n = read(pipe_fd[PIPE_READ], response, MAX_SHELL_RESULT_LEN) < 0)) {
-            p_error("read()", "Could not read from pipe.");
-            return NULL;
+        if ((n = read(pipe_fd[PIPE_READ], response, MAX_SHELL_RESULT_LEN - 1) < 0)) {
+            nakd_terminate("read()");
+            goto ret;
         }
-        response[MAX_SHELL_RESULT_LEN] = 0;
+        response[MAX_SHELL_RESULT_LEN - 1] = 0;
 
         close(pipe_fd[PIPE_READ]);
     }
 
-    return strdup(response);
+ret:
+    if (response != NULL) {
+        truncated = strdup(response);
+        free(response);
+    }
+    return truncated;
 }
 
 static char **json_get_args(json_object *msg) {
@@ -144,7 +156,9 @@ json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
     json_object *jcmd_output;
     char *output;
     const char **argv;
-   
+
+    nakd_log_execution_point();
+
     nakd_assert(spec->path != NULL);
  
     jresponse = json_object_new_object();

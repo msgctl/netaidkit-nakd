@@ -8,9 +8,9 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "server.h"
 #include "nakd.h"
 #include "log.h"
-#include "misc.h"
 
 /* Create file containing pid as a string and obtain a write lock for it. */
 int writePid(char *pid_path) {
@@ -19,7 +19,7 @@ int writePid(char *pid_path) {
     char pid_str[PID_STR_LEN + 1];
 
     if ((fd = open(pid_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1)
-        p_error("open()", NULL);
+        nakd_terminate("open()");
 
     pid_lock.l_type = F_WRLCK;
     pid_lock.l_whence = SEEK_SET;
@@ -30,89 +30,30 @@ int writePid(char *pid_path) {
         return -1;
 
     if (ftruncate(fd, 0) == -1)
-        p_error("ftruncate()", NULL);
+        nakd_terminate("ftruncate()");
 
     snprintf(pid_str, PID_STR_LEN + 1, "%ld\n", (long) getpid());
     if (write(fd, pid_str, strlen(pid_str)) != strlen(pid_str))
-        p_error("write()", "Could not write to pidfile.");
+        nakd_terminate("write()");
 
     return fd;
 }
 
 int main(int argc, char *argv[]) {
-    struct stat sock_path_st;
-    struct sockaddr_un server;
-    int pid_fd, sock, n_sock_path = strlen(SOCK_PATH);
+    int pid_fd;
 
     nakd_log_init();
     nakd_use_syslog(0);
 
     /* Check if nakd is already running. */
     if ((pid_fd = writePid(PID_PATH)) == -1)
-        p_error("writePid()", "nakd is already running.");
+        nakd_terminate("writePid()");
 
     /* TODO: CHECK IF CURRENT USER IS ROOT AND IF NAKD USER EXISTS */
 
-    /* Create the nakd server socket. */
-    if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-        p_error("socket()", NULL);
-
-    /* Check if SOCK_PATH is strncpy safe. */
-    if (n_sock_path >= UNIX_PATH_MAX)
-        p_error("main()", "Socket path too long.");
-
-    /* Set domain socket path to SOCK_PATH. */
-    memset(&server, 0x0, sizeof(struct sockaddr_un));
-    strncpy(server.sun_path, SOCK_PATH, n_sock_path);
-    server.sun_family = AF_UNIX;
-
-    /* TODO: ADD P_INFO FUNCTION */
-    printf("[INFO]\tnakd: Using socket at %s\n", server.sun_path);
-
-    /* Remove domain socket file if it exists. */
-    if (stat(SOCK_PATH, &sock_path_st) == 0)
-        if (unlink(SOCK_PATH) == -1)
-            p_error("unlink()", NULL);
-
-    /* Bind nakd server socket to the domain socket. */
-    if (bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un)) < 0)
-         p_error("bind()", NULL);
-
-     /* Set domain socket world writable, permissions via credentials passing */
-     if (chmod(SOCK_PATH, 0777) == -1)
-        p_error("chmod()", "Could not make domain socket world writable.");
-
-    /* Listen on local domain socket. */
-    if (listen(sock, 5) == -1)
-        p_error("listen()", NULL);
-
-    /* Main nakd loop. */
-    for(;;) {
-        int c_sock;
-        socklen_t len;
-        pid_t handler_pid;
-        struct sockaddr_un client;
-
-        len = sizeof(client);
-        if ((c_sock = accept(sock, (struct sockaddr *) &client, &len)) == -1)
-            p_error("accept", NULL);
-
-        nakd_log(L_INFO, "Connection accepted");
-
-        if ((handler_pid = fork()) == -1)
-            p_error("fork", NULL);
-        else if (handler_pid == 0) {
-            return nakd_handle_connection(c_sock);
-        } else {
-            waitpid(handler_pid, NULL, WUNTRACED);
-        }
-
-        close(c_sock);
-    }
-
-    close(sock);
-    if (unlink(SOCK_PATH) == -1)
-        p_error("unlink()", NULL);
+    nakd_server_init();
+    nakd_accept_loop();
+    nakd_server_cleanup();
 
     nakd_log_close();
     return 0;

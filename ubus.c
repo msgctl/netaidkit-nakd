@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <libubox/blobmsg_json.h>
 #include <libubus.h>
-#include "misc.h"
+#include "log.h"
 
 #define UBUS_CALL_TIMEOUT 15 * 1000
 

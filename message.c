@@ -2,8 +2,8 @@
 #include <json-c/json.h>
 #include "message.h"
 #include "command.h"
-#include "misc.h"
 #include "log.h"
+#include "misc.h"
 
 typedef json_object *(*msg_handler)(json_object *jmsg);
 

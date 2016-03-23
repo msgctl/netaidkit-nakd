@@ -1,6 +1,6 @@
 #include <uci.h>
 #include "config.h"
-#include "misc.h"
+#include "log.h"
 
 static struct uci_context *uci_ctx;
 

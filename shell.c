@@ -5,83 +5,65 @@
 #include <sys/wait.h>
 #include <json-c/json.h>
 #include "shell.h"
-#include "message.h"
+#include "request.h"
 #include "log.h"
+#include "jsonrpc.h"
 
 #define PIPE_READ       0
 #define PIPE_WRITE      1
 
-/* Will always at least return a pointer to {NULL} */
-static char **parse_args(char *data) {
-    char **args = malloc(sizeof(char *));
-    char *line;
-    int n_args = 0;
+#define NAKD_SHELL "/bin/sh"
 
-    strsep(&data, "\r\n");
-    while ((line = strsep(&data, "\r\n")) != NULL) {
-        if (strlen(line) < 1)
-            continue;
-        args = realloc(args, sizeof(char *) * (++n_args + 1));
-        args[n_args - 1] = strdup(line);
+/* create {"/bin/sh", argv[0], ..., argv[n], NULL} on heap */
+static char **build_argv(const char *path, json_object *params) {
+    int argn = json_object_array_length(params);
+    char **argv = malloc((argn + 3) * sizeof(char *));
+    nakd_assert(argv != NULL);
+
+    argv[0] = strdup(NAKD_SHELL);
+    argv[1] = strdup(path);
+
+    int i = 0;
+    for (; i < argn; i++) {
+        const char *param = json_object_get_string(
+             json_object_array_get_idx(params, i));
+        argv[2+i] = strdup(param);
     }
-
-    args[n_args] = NULL;
-    return args;
-}
-
-/* create {"/bin/sh", "script", args[0], ..., args[n], NULL} on heap */
-static char **build_argv(const char *script, const char *args[]) {
-    int i, n_args = 0;
-    char **argv = NULL;
-
-    for (i = 0; args[i] != NULL; i++)
-        n_args++;
-
-    argv = malloc((n_args + 3) * sizeof(char *));
-    argv[0] = strdup("/bin/sh");
-    argv[1] = strdup(script);
-
-    for (i = 0; args[i] != NULL; i++)
-        argv[2+i] = strdup(args[i]);
 
     argv[2+i] = NULL;
     return argv;
 }
 
-static void free_argv(char **argv) {
-    int i;
+static void free_argv(const char **argv) {
+    if (argv == NULL)
+        return;
 
-    for (i = 0; argv[i] != NULL; i++)
-        free(argv[i]);
-
-    free(argv);
+    for (int i = 0; argv[i] != NULL; i++)
+        free((void *)(argv[i]));
+    free((void *)(argv));
 }
 
-static void log_execve(const char *script, const char *args[]) {
+static void log_execve(const char *argv[]) {
     char execve_log[1024];
     int format_len = 0;
-    const char **arg;
 
-    format_len += snprintf(execve_log, sizeof(execve_log)
-                     - format_len, "execve: %s", script);
-    for (arg = args; *arg != NULL; arg++)
+    for (; *argv != NULL; argv++)
         format_len += snprintf(execve_log + format_len, sizeof(execve_log)
-                                               - format_len, " %s", *arg);
+                                               - format_len, " %s", *argv);
 
     nakd_log(L_DEBUG, execve_log);
 }
 
 /* Returns NULL if the command failed.
- * args must end with a NULL pointer.
  */
-char *nakd_do_command(const char *script, const char *args[]) {
+char *nakd_do_command(const char **argv) {
     pid_t pid;
     int pipe_fd[2];
     char *response = NULL;
     char *truncated = NULL;
 
     nakd_log_execution_point();
-    log_execve(script, args);
+    log_execve((const char **)(argv));
 
     response = malloc(MAX_SHELL_RESULT_LEN);
     if (response == NULL) {
@@ -105,10 +87,8 @@ char *nakd_do_command(const char *script, const char *args[]) {
         dup2(pipe_fd[PIPE_WRITE], 1);
         dup2(pipe_fd[PIPE_WRITE], 2);
 
-        char **argv = build_argv(script, args);
-        execve(argv[0], argv, NULL);
+        execve(argv[0], (char * const *)(argv), NULL);
 
-        free_argv(argv);
         nakd_terminate("execve()");
     } else { /* parent */
         int n = 0;
@@ -132,63 +112,46 @@ ret:
     return truncated;
 }
 
-static char **json_get_args(json_object *msg) {
-    char *args;
-    char **argv;
-    json_object *jcmd = NULL;
-    
-    json_object_object_get_ex(msg, "args", &jcmd);
-
-    if (jcmd == NULL ||
-        !json_object_is_type(jcmd, json_type_string)) {
-        nakd_log(L_NOTICE, "Couldn't get command line arguments from message.");
-        return NULL;
-    }
-
-    args = strdup(json_object_get_string(jcmd));
-    argv = parse_args(args);
-    free(args);
-    return argv;
-}
-
 json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
     json_object *jresponse;
-    json_object *jcmd_output;
-    char *output;
+    json_object *jparams;
     const char **argv;
+    const char **cleanup_argv = NULL;
 
     nakd_log_execution_point();
-
-    nakd_assert(spec->path != NULL);
+    nakd_assert(spec->argv[0] != NULL);
  
-    jresponse = json_object_new_object();
-    nakd_message_set_type(jresponse, MSG_TYPE_REPLY);
-
     /* argv defined in nakd take precedence over request */
-    if (spec->argv != NULL) {
+    if (spec->argv[1] != NULL) {
         nakd_log(L_DEBUG, "Using predefined arguments for \"%s\"",
-                                                      spec->path);
+                                                   spec->argv[0]);
         argv = spec->argv;
     } else {
-        if ((argv = (const char **)(json_get_args(jcmd))) == NULL) {
+        if ((jparams = nakd_jsonrpc_params(jcmd)) == NULL ||
+             json_object_get_type(jparams) != json_type_array) {
             nakd_log(L_NOTICE, "Couldn't get shell command arguments for %s",
-                                                                 spec->path);
-            nakd_message_set_status(jresponse, MSG_STATUS_ERROR);
+                                                              spec->argv[0]);
+            jresponse = nakd_jsonrpc_response_error(jcmd, INVALID_PARAMS,
+                "Invalid parameters - params should be an array of strings");
             goto response;
+        } else {
+            argv = cleanup_argv = (const char **) build_argv(spec->argv[0],
+                                                                  jparams);
         }
     }
 
-    if ((output = nakd_do_command(spec->path, argv)) == NULL) {
-        nakd_log(L_NOTICE, "Error while running shell command %s", spec->path);
-        nakd_message_set_status(jresponse, MSG_STATUS_ERROR);
+    char *output;
+    if ((output = nakd_do_command(argv)) == NULL) {
+        nakd_log(L_NOTICE, "Error while running shell command %s", spec->argv[0]);
+        jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR, NULL);
         goto response;
     }
-
-    jcmd_output = json_object_new_string(output);
-    json_object_object_add(jresponse, "result", jcmd_output);
-    nakd_message_set_status(jresponse, MSG_STATUS_SUCCESS);
+    json_object *jcmd_output = json_object_new_string(output);
+    free(output);
+    jresponse = nakd_jsonrpc_response_success(jcmd, jcmd_output);
 
 response:
+    free_argv(cleanup_argv);
     nakd_log(L_DEBUG, "Returning response.");
     return jresponse;
 }

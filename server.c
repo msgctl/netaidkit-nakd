@@ -10,9 +10,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include "server.h"
-#include "message.h"
+#include "request.h"
 #include "log.h"
 #include "misc.h"
+#include "jsonrpc.h"
 
 /* TODO nice to have: implement w/ epoll, threadpool and workqueue */
 
@@ -123,6 +124,7 @@ static int _message_loop(int sock) {
                           (struct sockaddr *) &client_addr, &client_len)) < 0) { 
                     nakd_log(L_DEBUG, "recvfrom() < 0, closing connection (%s)",
                                                              strerror(nb_read));
+                    rval = 1;
                     goto ret;
                 } else if (!nb_read) {
                     /* Handle orderly shutdown. */
@@ -151,6 +153,16 @@ static int _message_loop(int sock) {
             nakd_log(L_DEBUG, "Got message: %s", jmsg_string);
 
             jresponse = nakd_handle_message(jmsg);
+        } else {
+            nakd_log(L_NOTICE, "Couldn't parse client JSON message: %s.",
+                                          json_tokener_error_desc(jerr));
+
+            jresponse = nakd_jsonrpc_response_error(NULL, PARSE_ERROR, NULL);
+            json_tokener_reset(jtok);
+        }
+
+        /* jresponse will be null while handling notifications. */
+        if (jresponse != NULL) {
             jrstr = json_object_get_string(jresponse);
 
             while (nb_resp = strlen(jrstr)) {
@@ -169,12 +181,6 @@ static int _message_loop(int sock) {
             nakd_log(L_DEBUG, "Response sent: %s",
                 json_object_to_json_string(jresponse));
             json_object_put(jresponse), jresponse = NULL;
-        } else {
-            nakd_log(L_NOTICE, "Couldn't parse client JSON message: %s."
-                                                 " Closing connection.",
-                                         json_tokener_error_desc(jerr));
-            rval = 1;
-            goto ret;
         }
 
         json_object_put(jmsg), jmsg = NULL;

@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
-#include <command.h>
-#include <message.h>
 #include <linux/un.h>
 #include <sys/stat.h>
 #include <sys/wait.h>

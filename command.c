@@ -38,11 +38,9 @@ command *nakd_get_command(const char *cmd_name) {
 }
 
 json_object *nakd_call_command(const char *cmd_name, json_object *jcmd) {
-    command *cmd;
-
     nakd_log_execution_point();
     
-    cmd = nakd_get_command(cmd_name);
+    command *cmd = nakd_get_command(cmd_name);
     if (cmd == NULL) {
         nakd_log(L_NOTICE, "Couldn't find command %s.", cmd_name);
         return NULL;

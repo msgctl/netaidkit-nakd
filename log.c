@@ -69,9 +69,11 @@ void _nakd_log(int priority, const char *format, const char *func,
     va_end(vl);
 }
 
-void _nakd_assert(int stmt, const char *stmt_str, const char *func) {
+void _nakd_assert(int stmt, const char *stmt_str, const char *func,
+                                                        int line) {
     if (stmt)
         return;
 
-    nakd_terminate("nakd: assertion (%s) failed in %s\n", stmt_str, func);
+    nakd_terminate("nakd: assertion (%s) failed in %s:%d\n", stmt_str, func,
+                                                                      line);
 }

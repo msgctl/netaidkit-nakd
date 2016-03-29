@@ -20,9 +20,9 @@ void _nakd_log(int priority, const char *format, const char *func,
     { nakd_log(L_CRIT, (format), ##args); fflush(stdout); fflush(stderr); \
                                                                  exit(1); }
 
-#define nakd_assert(stmt) _nakd_assert((stmt), #stmt, __PRETTY_FUNCTION__)
+#define nakd_assert(stmt) _nakd_assert((stmt), #stmt, __PRETTY_FUNCTION__, __LINE__)
 
-void _nakd_assert(int stmt, const char *stmt_str, const char *func);
+void _nakd_assert(int stmt, const char *stmt_str, const char *func, int line);
 
 #define nakd_log_execution_point() \
     nakd_log(L_DEBUG, "")

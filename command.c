@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "command.h"
 #include "shell.h"
+#include "stage.h"
 #include "log.h"
 #include "misc.h"
 
@@ -21,6 +22,7 @@ static command commands[] = {
     CMD_SHELL_NAKD("doupdate", "do_update.sh"),
     CMD_SHELL_NAKD("broadcst", "toggle_broadcast.sh"),
     CMD_SHELL_NAKD("isportal", "detect_portal.sh"),
+    { "stage", cmd_stage, NULL }
 };
 
 command *nakd_get_command(const char *cmd_name) {

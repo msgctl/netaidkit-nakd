@@ -12,6 +12,8 @@ int nakd_call_uci_hooks(const char *package,
     struct uci_package *uci_pkg;
     struct uci_context *ctx;
     
+    nakd_log(L_INFO, "Calling UCI hooks for \"%s\"", state);
+    nakd_log(L_DEBUG, "Loading UCI package %s", package);
     uci_pkg = nakd_load_uci_package(package);
     if (package == NULL)
         return 1;
@@ -26,6 +28,8 @@ int nakd_call_uci_hooks(const char *package,
          */
         uci_foreach_element(&uci_pkg->sections, sel) {
             section = uci_to_section(sel);
+            nakd_log(L_DEBUG, "Iterating over section \"%s\"",
+                                            section->e->name);
 
             option = uci_lookup_option(uci_pkg->ctx, section, hook->name);
             if (option == NULL)

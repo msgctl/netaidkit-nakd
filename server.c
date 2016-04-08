@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <json-c/json.h>
 #include "server.h"
 #include "request.h"
 #include "log.h"

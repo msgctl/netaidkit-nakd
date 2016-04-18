@@ -49,9 +49,11 @@ int main(int argc, char *argv[]) {
 
     /* TODO: CHECK IF CURRENT USER IS ROOT AND IF NAKD USER EXISTS */
 
+    nakd_ubus_init();
     nakd_server_init();
     nakd_accept_loop();
     nakd_server_cleanup();
+    nakd_ubus_free();
 
     nakd_log_close();
     return 0;

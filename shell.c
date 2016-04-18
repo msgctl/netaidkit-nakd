@@ -25,8 +25,12 @@ static char **build_argv(const char *path, json_object *params) {
 
     int i = 0;
     for (; i < argn; i++) {
-        const char *param = json_object_get_string(
-             json_object_array_get_idx(params, i));
+        const char *param = "";
+        json_object *jparam = json_object_array_get_idx(params, i);
+
+        if (jparam != NULL)
+            param = json_object_get_string(jparam);
+
         argv[2+i] = strdup(param);
     }
 

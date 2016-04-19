@@ -23,7 +23,7 @@ static void toggle_rule(const char *hook_name, const char *state,
         name = "";
 
     nakd_log(L_NOTICE, "%s firewall rule \"%s\"", strcasecmp(hook_name,
-                        "nak_hooks_enable") ? "Enabling" : "Disabling",
+                        "nak_hooks_enable") ? "Disabling" : "Enabling",
                                                                  name);
 
     struct uci_option *opt_enabled =

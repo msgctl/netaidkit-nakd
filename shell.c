@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/wait.h>
 #include <json-c/json.h>
 #include "shell.h"
@@ -15,7 +16,7 @@
 #define NAKD_SHELL "/bin/sh"
 
 /* create {"/bin/sh", argv[0], ..., argv[n], NULL} on heap */
-static char **build_argv(const char *path, json_object *params) {
+static char **build_argv_json(const char *path, json_object *params) {
     int argn = json_object_array_length(params);
     char **argv = malloc((argn + 3) * sizeof(char *));
     nakd_assert(argv != NULL);
@@ -35,6 +36,44 @@ static char **build_argv(const char *path, json_object *params) {
     }
 
     argv[2+i] = NULL;
+    return argv;
+}
+
+static int _get_argc(const char *args) {
+    int argc = 0;
+    int prev = 0;
+
+    for (const char *p = args; *p; p++) {
+        if (isspace(*p) && prev) {
+            argc++;
+            prev = 0;
+        } else {
+            prev = 1;
+        }
+    }
+    return argc;
+}
+
+static char **build_argv(const char *args) {
+    const char *delim = "\f\n\r\t\v ";
+    char *argscp = strdup(args);
+    char *pos = argscp;
+    nakd_assert(argscp != NULL);
+
+    int argc = _get_argc(args);
+
+    char **argv = malloc((argc + 2) * sizeof(char *));
+    nakd_assert(argv != NULL);
+
+    argv[0] = strdup(NAKD_SHELL);
+
+    int i = 0;
+    for (; i < argc; i++) {
+        const char *param = strsep(&pos, delim);
+        argv[1+i] = strdup(param);
+    }
+
+    argv[1+i] = NULL;
     return argv;
 }
 
@@ -58,9 +97,18 @@ static void log_execve(const char *argv[]) {
     nakd_log(L_DEBUG, execve_log);
 }
 
+char *nakd_do_command(const char *args) {
+    const char **argv = build_argv(args);
+    nakd_assert(argv != NULL);
+
+    char *result = nakd_do_command_argv(argv);
+    free_argv(argv);
+    return result;
+}
+
 /* Returns NULL if the command failed.
  */
-char *nakd_do_command(const char **argv) {
+char *nakd_do_command_argv(const char **argv) {
     pid_t pid;
     int pipe_fd[2];
     char *response = NULL;
@@ -139,13 +187,13 @@ json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
                 "Invalid parameters - params should be an array of strings");
             goto response;
         } else {
-            argv = cleanup_argv = (const char **) build_argv(spec->argv[0],
-                                                                  jparams);
+            argv = cleanup_argv = (const char **) build_argv_json(spec->argv[0],
+                                                                       jparams);
         }
     }
 
     char *output;
-    if ((output = nakd_do_command(argv)) == NULL) {
+    if ((output = nakd_do_command_argv(argv)) == NULL) {
         nakd_log(L_NOTICE, "Error while running shell command %s", spec->argv[0]);
         jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR, NULL);
         goto response;

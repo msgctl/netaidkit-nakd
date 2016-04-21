@@ -64,14 +64,10 @@ static struct nakd_uci_hook _stage_hooks[] = {
     {NULL, NULL}
 };
 
-static int _call_stage_hooks(const char *stage) {
-    return nakd_call_uci_hooks_all(_stage_hooks, stage);
-}
-
 int nakd_stage(const char *stage) {
     nakd_log(L_INFO, "Stage %s", stage);
 
-    if (_call_stage_hooks(stage))
+    if (nakd_call_uci_hooks(_stage_hooks, stage))
         return 1;
 
     char *result = _run_stage_script(stage);

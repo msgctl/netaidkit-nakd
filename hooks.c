@@ -9,73 +9,48 @@ static void _call_hook(struct nakd_uci_hook *hook, const char *state,
     hook->handler(hook->name, state, option);
 }
 
-int nakd_call_uci_hooks_all(struct nakd_uci_hook *hook_list,
-                                        const char *state) {
-    char **uci_packages = nakd_list_packages();
-    if (uci_packages == NULL)
-        return 1;
+struct hook_cb_data {
+    const char *state;
+    struct nakd_uci_hook *hook;
+};
 
-    for (char **package = uci_packages; *package != NULL; package++) {
-         if (nakd_call_uci_hooks(*package, hook_list, state))
-            return 1;
+static int _hook_foreach_cb(struct uci_option *option,
+                          struct hook_cb_data *priv) {
+    struct uci_element *lel;
+
+    if (option->type == UCI_TYPE_STRING) {
+        if (!strcasecmp(option->v.string, priv->state))
+            _call_hook(priv->hook, priv->state, option); 
+    } else if (option->type == UCI_TYPE_LIST) {
+        /*
+         * ...and through options, which are in fact lists
+         *  list nak_hooks_disable   'stage_online'
+         *  list nak_hooks_disable   'stage_vpn'
+         */
+        uci_foreach_element(&option->v.list, lel) {
+            if (!strcasecmp(lel->name, priv->state))
+                _call_hook(priv->hook, priv->state, option);
+        }
+    } else {
+        /* unreachable */
+        nakd_assert(0 && "unreachable");
     }
     return 0;
 }
 
-int nakd_call_uci_hooks(const char *package,
-    struct nakd_uci_hook *hook_list, const char *state) {
-    struct nakd_uci_hook *hook;
-    struct uci_element *sel, *lel;
-    struct uci_section *section;
-    struct uci_option *option;
-    struct uci_package *uci_pkg;
+int nakd_call_uci_hooks(struct nakd_uci_hook *hook_list, const char *state) {
+    for (struct nakd_uci_hook *hook = hook_list; hook->name != NULL; hook++) {
+        struct hook_cb_data cb_data = {
+            .state = state,
+            .hook = hook
+        };
+
+        int calls = nakd_uci_option_foreach(hook->name, _hook_foreach_cb,
+                                                               &cb_data);
+        if (calls < 0)
+            return 1;
     
-    nakd_log(L_INFO, "Calling UCI hooks for \"%s\"", state);
-    nakd_log(L_DEBUG, "Loading UCI package %s", package);
-    uci_pkg = nakd_load_uci_package(package);
-    if (package == NULL)
-        return 1;
-
-    /* for each hook */
-    for (hook = hook_list; hook->name != NULL; hook++) {
-        nakd_assert(hook->handler != NULL);
-
-        /*
-         * Iterate through sections, ie.
-         *  config redirect
-         */
-        uci_foreach_element(&uci_pkg->sections, sel) {
-            section = uci_to_section(sel);
-
-            option = uci_lookup_option(uci_pkg->ctx, section, hook->name);
-            if (option == NULL)
-                continue;
-
-            if (option->type == UCI_TYPE_STRING) {
-                if (!strcasecmp(option->v.string, state))
-                    _call_hook(hook, state, option); 
-            } else if (option->type == UCI_TYPE_LIST) {
-                /*
-                 * ...and through options, which are in fact lists
-                 *  list nak_hooks_disable   'stage_online'
-                 *  list nak_hooks_disable   'stage_vpn'
-                 */
-                uci_foreach_element(&option->v.list, lel) {
-                    if (!strcasecmp(lel->name, state))
-                        _call_hook(hook, state, option);
-                }
-            } else {
-                /* unreachable */
-                nakd_assert(0 && "unreachable");
-            }
-        }
+        nakd_log(L_DEBUG, "%s hook called %d times.", hook->name, calls);
     }
-
-    if (nakd_uci_save(uci_pkg))
-        return 1;
-
-    /* nakd probably wouldn't recover from these */
-    nakd_assert(!nakd_uci_commit(&uci_pkg, true));
-    nakd_assert(!nakd_unload_uci_package(uci_pkg));
     return 0;
 }

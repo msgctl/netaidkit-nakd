@@ -9,6 +9,19 @@ static void _call_hook(struct nakd_uci_hook *hook, const char *state,
     hook->handler(hook->name, state, option);
 }
 
+int nakd_call_uci_hooks_all(struct nakd_uci_hook *hook_list,
+                                        const char *state) {
+    char **uci_packages = nakd_list_packages();
+    if (uci_packages == NULL)
+        return 1;
+
+    for (char **package = uci_packages; *package != NULL; package++) {
+         if (nakd_call_uci_hooks(*package, hook_list, state))
+            return 1;
+    }
+    return 0;
+}
+
 int nakd_call_uci_hooks(const char *package,
     struct nakd_uci_hook *hook_list, const char *state) {
     struct nakd_uci_hook *hook;

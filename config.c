@@ -2,7 +2,7 @@
 #include "config.h"
 #include "log.h"
 
-static struct uci_context *uci_ctx;
+static struct uci_context *uci_ctx = NULL;
 
 static int init_uci_ctx() {
     if (!uci_ctx)
@@ -27,6 +27,16 @@ struct uci_package *nakd_load_uci_package(const char *name) {
     }
 
     return pkg;
+}
+
+char **nakd_list_packages(void) {
+    char **packages;
+
+    if ((uci_list_configs(uci_ctx, &packages) != UCI_OK)) {
+        nakd_log(L_CRIT, "Couldn't enumerate UCI packages");
+        return NULL;
+    }
+    return packages;
 }
 
 int nakd_uci_save(struct uci_package *pkg) {

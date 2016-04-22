@@ -21,14 +21,13 @@ struct stage {
 
     struct nakd_uci_hook *hooks;
 
+    /* user-friendly error message */
     char *err;
 };
 
-int nakd_run_stage_script(struct stage *stage);
-int nakd_run_uci_hooks(struct stage *stage);
-
 int nakd_stage_init(void);
 int nakd_stage_spec(struct stage *stage);
+int nakd_stage(const char *stage_name);
 
 json_object *cmd_stage(json_object *jcmd, void *);
 

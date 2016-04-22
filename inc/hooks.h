@@ -1,5 +1,5 @@
-#ifndef HOOKS_H
-#define HOOKS_H
+#ifndef NAKD_HOOKS_H
+#define NAKD_HOOKS_H
 #include <uci.h>
 
 struct nakd_uci_hook {

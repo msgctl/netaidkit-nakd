@@ -1,5 +1,5 @@
-#ifndef COMMAND_H
-#define COMMAND_H
+#ifndef NAKD_COMMAND_H
+#define NAKD_COMMAND_H
 #include <json-c/json.h>
 
 typedef json_object *(*cmd_handler)(json_object *jcmd, void *priv);

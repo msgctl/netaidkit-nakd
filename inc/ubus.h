@@ -1,5 +1,5 @@
-#ifndef UBUS_H
-#define UBUS_H
+#ifndef NAKD_UBUS_H
+#define NAKD_UBUS_H
 #include <libubus.h>
 
 int nakd_ubus_init();

@@ -1,5 +1,5 @@
-#ifndef REQUEST_H
-#define REQUEST_H
+#ifndef NAKD_REQUEST_H
+#define NAKD_REQUEST_H
 #include <json-c/json.h>
 
 json_object *nakd_handle_message(json_object *jmsg);

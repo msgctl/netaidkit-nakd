@@ -1,5 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef NAKD_SERVER_H
+#define NAKD_SERVER_H
 
 void nakd_server_init(void);
 void nakd_server_cleanup(void);

@@ -1,5 +1,5 @@
-#ifndef JSONRPC_H
-#define JSONRPC_H
+#ifndef NAKD_JSONRPC_H
+#define NAKD_JSONRPC_H
 
 enum jsonrpc_err {
     PARSE_ERROR = -32700,

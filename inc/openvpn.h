@@ -1,5 +1,5 @@
-#ifndef OPENVPN_H
-#define OPENVPN_H
+#ifndef NAKD_OPENVPN_H
+#define NAKD_OPENVPN_H
 #include <json-c/json.h>
 
 int nakd_start_openvpn(void);

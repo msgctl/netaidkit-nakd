@@ -1,5 +1,5 @@
-#ifndef STAGE_H
-#define STAGE_H
+#ifndef NAKD_STAGE_H
+#define NAKD_STAGE_H
 #include <json-c/json.h>
 #include "uci.h"
 #include "hooks.h"

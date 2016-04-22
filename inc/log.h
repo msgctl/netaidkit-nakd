@@ -1,5 +1,5 @@
-#ifndef LOG_H
-#define LOG_H
+#ifndef NAKD_LOG_H
+#define NAKD_LOG_H
 #include <stdlib.h>
 #define DEFAULT_LOG_LEVEL L_DEBUG
 

@@ -1,5 +1,5 @@
-#ifndef SHELL_H
-#define SHELL_H
+#ifndef NAKD_SHELL_H
+#define NAKD_SHELL_H
 #include <json-c/json.h>
 #include "command.h"
 

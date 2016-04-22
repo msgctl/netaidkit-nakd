@@ -17,18 +17,17 @@ struct cmd_shell_spec {
 };
 
 #define CMD_SHELL_ARGV(name, path, argv...) \
-    { name, cmd_shell, &(struct cmd_shell_spec){ (const char*[]){ \
-                                             path, argv, NULL } } }
+    { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
+    { (const char*[]){ path, argv, NULL } } }
 #define CMD_SHELL(name, path) \
-    { name, cmd_shell, &(struct cmd_shell_spec){ (const char*[]){ \
-                                                   path, NULL } } }
+    { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
+    { (const char*[]){ path, NULL } } }
 #define CMD_SHELL_NAKD_ARGV(name, path, argv...) \
-    { name, cmd_shell, &(struct cmd_shell_spec){ (const char*[]){ \
-                                NAKD_SCRIPT(path), argv, NULL } } }
+    { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
+    { (const char*[]){ NAKD_SCRIPT(path), argv, NULL } } }
 #define CMD_SHELL_NAKD(name, path) \
-    { name, cmd_shell, &(struct cmd_shell_spec){ (const char*[]){ \
-                                      NAKD_SCRIPT(path), NULL } } }
-
+    { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
+    { (const char*[]){ NAKD_SCRIPT(path), NULL } } }
 
 json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec);
 

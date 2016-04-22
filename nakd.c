@@ -9,6 +9,7 @@
 #include "server.h"
 #include "nakd.h"
 #include "log.h"
+#include "ubus.h"
 
 /* Create file containing pid as a string and obtain a write lock for it. */
 int writePid(char *pid_path) {

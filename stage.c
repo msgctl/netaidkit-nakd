@@ -9,6 +9,7 @@
 #include "command.h"
 #include "jsonrpc.h"
 #include "shell.h"
+#include "openvpn.h"
 
 #define NAKD_STAGE_SCRIPT_PATH NAKD_SCRIPT_PATH "stage/"
 #define NAKD_STAGE_SCRIPT_FMT (NAKD_STAGE_SCRIPT_PATH "%s" ".sh")
@@ -45,37 +46,172 @@ static void toggle_rule(const char *hook_name, const char *state,
     nakd_assert(!uci_set(ctx, &new_opt_enabled_ptr));
 }
 
-static char *_run_stage_script(const char *stage) {
+int nakd_run_stage_script(struct stage *stage) {
     char path[PATH_MAX];
-    snprintf(path, sizeof path, NAKD_STAGE_SCRIPT_FMT, stage);
+    snprintf(path, sizeof path, NAKD_STAGE_SCRIPT_FMT, stage->name);
 
     if (access(path, X_OK)) {
         nakd_log(L_DEBUG, "No executable script at %s, continuing.");
         return NULL;
     }
 
-    return nakd_do_command(path);
+    char *output = nakd_do_command(path);
+    if (output != NULL) {
+        nakd_log(L_DEBUG, "Stage script output: %s", output);
+        free(output);
+    }
+
+    return output == NULL;
 }
 
-static struct nakd_uci_hook _stage_hooks[] = {
+int nakd_run_uci_hooks(struct stage *stage) {
+    return nakd_call_uci_hooks(stage->hooks, stage->name);
+}
+
+static struct nakd_uci_hook _firewall_hooks[] = {
     /* rewrite firewall rules */
     {"nak_rule_enable", toggle_rule},
     {"nak_rule_disable", toggle_rule},
     {NULL, NULL}
 };
 
-int nakd_stage(const char *stage) {
-    nakd_log(L_INFO, "Stage %s", stage);
+static const struct stage _stages[] = {
+    {
+        .name = "stage_default",
+        .desc = "",
+        .work = (struct stage_step[]){
+           { 
+                .name = "Stopping OpenVPN",
+                .desc = "",
+                .work = nakd_stop_openvpn
+           },
+           { 
+                .name = "Calling UCI hooks",
+                .desc = "",
+                .work = nakd_run_uci_hooks 
+           },
+           { 
+                .name = "Running stage shell script",
+                .desc = "",
+                .work = nakd_run_stage_script 
+           },
+           NULL
+        },
+        .hooks = _firewall_hooks,
 
-    if (nakd_call_uci_hooks(_stage_hooks, stage))
-        return 1;
+        .err = NULL
+    },
+    {
+        .name = "stage_online",
+        .desc = "",
+        .work = (struct stage_step[]){
+           { 
+                .name = "Stopping OpenVPN",
+                .desc = "",
+                .work = nakd_stop_openvpn
+           },
+           { 
+                .name = "Calling UCI hooks",
+                .desc = "",
+                .work = nakd_run_uci_hooks 
+           },
+           { 
+                .name = "Running stage shell script",
+                .desc = "",
+                .work = nakd_run_stage_script 
+           },
+           NULL
+        },
+        .hooks = _firewall_hooks,
 
-    char *result = _run_stage_script(stage);
-    if (result != NULL) {
-        nakd_log(L_DEBUG, "Stage script output: %s", result);
-        free(result);
-    }
+        .err = NULL
+    },
+    {
+        .name = "stage_vpn",
+        .desc = "",
+        .work = (struct stage_step[]){
+           { 
+                .name = "Calling UCI hooks",
+                .desc = "",
+                .work = nakd_run_uci_hooks 
+           },
+           { 
+                .name = "Running stage shell script",
+                .desc = "",
+                .work = nakd_run_stage_script 
+           },
+           { 
+                .name = "Starting OpenVPN",
+                .desc = "",
+                .work = nakd_start_openvpn
+           },
+           NULL           
+        },
+        .hooks = _firewall_hooks,
+
+        .err = NULL
+    },
+    {
+        .name = "stage_tor",
+        .desc = "",
+        .work = (struct stage_step[]){
+           { 
+                .name = "Stopping OpenVPN",
+                .desc = "",
+                .work = nakd_stop_openvpn
+           },
+           { 
+                .name = "Calling UCI hooks",
+                .desc = "",
+                .work = nakd_run_uci_hooks 
+           },
+           { 
+                .name = "Running stage shell script",
+                .desc = "",
+                .work = nakd_run_stage_script 
+           },
+           NULL
+        },
+        .hooks = _firewall_hooks,
+
+        .err = NULL
+    },
+    {}
+};
+
+static struct stage *_current_stage = NULL;
+static const struct stage *_default_stage = _stages;
+
+int nakd_stage_init(void) {
+    nakd_log_execution_point();
+
+    if (_current_stage == NULL)
+        return nakd_stage_spec(_default_stage);
     return 0;
+}
+
+int nakd_stage_spec(struct stage *stage) {
+    nakd_log(L_INFO, "Stage %s", stage->name);
+
+    _current_stage->err = NULL;
+    _current_stage = stage;
+
+    for (const struct stage_step *step = stage->work; step != NULL;
+                                                          step++) {
+        nakd_log(L_INFO, "Stage %s: running step %s", stage->name, step->name);
+        if (step->work(stage))
+            return 1;
+    }
+    nakd_log(L_INFO, "Stage %s: done!", stage->name);
+    return 0;
+}
+
+int nakd_stage(const char *stage_name) {
+    for (const struct stage *stage = _stages; stage != NULL; stage++) {
+        if (!strcmp(stage->name, stage_name))
+            return nakd_stage_spec(stage);
+    }
+    return 1;
 }
 
 json_object *cmd_stage(json_object *jcmd, void *param) {

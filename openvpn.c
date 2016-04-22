@@ -227,7 +227,7 @@ response:
     return lines;
 }
 
-static int _start_openvpn(void) {
+int nakd_start_openvpn(void) {
     nakd_log_execution_point();
 
     int pid = fork();
@@ -248,7 +248,7 @@ static int _start_openvpn(void) {
     return 0;
 }
 
-static int _stop_openvpn(void) {
+int nakd_stop_openvpn(void) {
     if (!_openvpn_pid) {
         nakd_log(L_INFO, "Attempted to stop OpenVPN, but it isn't running.");
         return 0;
@@ -272,7 +272,7 @@ static int _stop_openvpn(void) {
     return 0;
 } 
 
-static int _restart_openvpn(void) {
+int nakd_restart_openvpn(void) {
     /* Cause OpenVPN to close all TUN/TAP and network connections, restart, 
      * re-read the configuration file (if any), and reopen TUN/TAP and network
      * connections. -- OpeVPN manpage
@@ -363,7 +363,7 @@ json_object *_call_start(json_object *jcmd) {
          goto response;
     }
 
-    if (_start_openvpn()) {
+    if (nakd_start_openvpn()) {
          jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
                            "Internal error - couldn't start OpenVPN");
          goto response;
@@ -379,7 +379,7 @@ response:
 json_object *_call_stop(json_object *jcmd) {
     json_object *jresponse;
 
-    if (_stop_openvpn()) {
+    if (nakd_stop_openvpn()) {
          jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
                               "Internal error - OpenVPN not running");
          goto response;
@@ -395,7 +395,7 @@ response:
 json_object *_call_restart(json_object *jcmd) {
     json_object *jresponse;
 
-    if (_restart_openvpn()) {
+    if (nakd_restart_openvpn()) {
          jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
                               "Internal error - OpenVPN not running");
          goto response;

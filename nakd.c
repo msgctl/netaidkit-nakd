@@ -1,21 +1,23 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <unistd.h>
 #include <linux/un.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "server.h"
-#include "nakd.h"
 #include "log.h"
 #include "ubus.h"
 
+#define PID_PATH "/run/nakd/nakd.pid"
+
 /* Create file containing pid as a string and obtain a write lock for it. */
-int writePid(char *pid_path) {
+static int _write_pid(char *pid_path) {
     int fd;
     struct flock pid_lock;
-    char pid_str[PID_STR_LEN + 1];
+    char pid_str[64];
 
     if ((fd = open(pid_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1)
         nakd_terminate("open()");
@@ -31,7 +33,7 @@ int writePid(char *pid_path) {
     if (ftruncate(fd, 0) == -1)
         nakd_terminate("ftruncate()");
 
-    snprintf(pid_str, PID_STR_LEN + 1, "%ld\n", (long) getpid());
+    snprintf(pid_str, sizeof pid_str, "%ld\n", (long) getpid());
     if (write(fd, pid_str, strlen(pid_str)) != strlen(pid_str))
         nakd_terminate("write()");
 
@@ -45,7 +47,7 @@ int main(int argc, char *argv[]) {
     nakd_use_syslog(0);
 
     /* Check if nakd is already running. */
-    if ((pid_fd = writePid(PID_PATH)) == -1)
+    if ((pid_fd = _write_pid(PID_PATH)) == -1)
         nakd_terminate("writePid()");
 
     /* TODO: CHECK IF CURRENT USER IS ROOT AND IF NAKD USER EXISTS */

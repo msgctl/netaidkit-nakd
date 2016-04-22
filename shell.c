@@ -98,7 +98,7 @@ static void log_execve(const char *argv[]) {
 }
 
 char *nakd_do_command(const char *args) {
-    const char **argv = build_argv(args);
+    const char **argv = (const char **)(build_argv(args));
     nakd_assert(argv != NULL);
 
     char *result = nakd_do_command_argv(argv);

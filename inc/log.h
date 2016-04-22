@@ -1,5 +1,6 @@
 #ifndef LOG_H
 #define LOG_H
+#include <stdlib.h>
 #define DEFAULT_LOG_LEVEL L_DEBUG
 
 enum {

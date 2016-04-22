@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include "command.h"
 #include "shell.h"
 #include "stage.h"

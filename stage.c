@@ -52,7 +52,7 @@ int nakd_run_stage_script(struct stage *stage) {
 
     if (access(path, X_OK)) {
         nakd_log(L_DEBUG, "No executable script at %s, continuing.");
-        return NULL;
+        return 0;
     }
 
     char *output = nakd_do_command(path);
@@ -62,6 +62,14 @@ int nakd_run_stage_script(struct stage *stage) {
     }
 
     return output == NULL;
+}
+
+static int _start_openvpn(struct stage *stage) {
+    return nakd_start_openvpn();
+}
+
+static int _stop_openvpn(struct stage *stage) {
+    return nakd_stop_openvpn();
 }
 
 int nakd_run_uci_hooks(struct stage *stage) {
@@ -75,7 +83,7 @@ static struct nakd_uci_hook _firewall_hooks[] = {
     {NULL, NULL}
 };
 
-static const struct stage _stages[] = {
+static struct stage _stages[] = {
     {
         .name = "stage_default",
         .desc = "",
@@ -83,7 +91,7 @@ static const struct stage _stages[] = {
            { 
                 .name = "Stopping OpenVPN",
                 .desc = "",
-                .work = nakd_stop_openvpn
+                .work = _stop_openvpn
            },
            { 
                 .name = "Calling UCI hooks",
@@ -108,7 +116,7 @@ static const struct stage _stages[] = {
            { 
                 .name = "Stopping OpenVPN",
                 .desc = "",
-                .work = nakd_stop_openvpn
+                .work = _stop_openvpn
            },
            { 
                 .name = "Calling UCI hooks",
@@ -143,7 +151,7 @@ static const struct stage _stages[] = {
            { 
                 .name = "Starting OpenVPN",
                 .desc = "",
-                .work = nakd_start_openvpn
+                .work = _start_openvpn
            },
            NULL           
         },
@@ -158,7 +166,7 @@ static const struct stage _stages[] = {
            { 
                 .name = "Stopping OpenVPN",
                 .desc = "",
-                .work = nakd_stop_openvpn
+                .work = _stop_openvpn
            },
            { 
                 .name = "Calling UCI hooks",
@@ -180,7 +188,7 @@ static const struct stage _stages[] = {
 };
 
 static struct stage *_current_stage = NULL;
-static const struct stage *_default_stage = _stages;
+static struct stage *_default_stage = _stages;
 
 int nakd_stage_init(void) {
     nakd_log_execution_point();
@@ -207,7 +215,7 @@ int nakd_stage_spec(struct stage *stage) {
 }
 
 int nakd_stage(const char *stage_name) {
-    for (const struct stage *stage = _stages; stage != NULL; stage++) {
+    for (struct stage *stage = _stages; stage != NULL; stage++) {
         if (!strcmp(stage->name, stage_name))
             return nakd_stage_spec(stage);
     }

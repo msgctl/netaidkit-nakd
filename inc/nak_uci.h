@@ -1,5 +1,5 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef UCI_H
+#define UCI_H
 #include <uci.h>
 
 typedef int (*nakd_uci_option_foreach_cb)(struct uci_option *option,

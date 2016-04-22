@@ -1,7 +1,7 @@
 #include <strings.h>
 #include <uci.h>
 #include "hooks.h"
-#include "config.h"
+#include "nak_uci.h"
 #include "log.h"
 
 static void _call_hook(struct nakd_uci_hook *hook, const char *state,

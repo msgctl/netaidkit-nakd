@@ -67,6 +67,9 @@ void _nakd_log(int priority, const char *format, const char *func,
         vfprintf(stderr, _fmt, vl);
     }
 
+    fflush(stdout);
+    fflush(stderr);
+
     va_end(vl);
 }
 

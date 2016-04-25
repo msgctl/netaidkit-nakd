@@ -223,8 +223,8 @@ int nakd_stage_init(void) {
 int nakd_stage_spec(struct stage *stage) {
     nakd_log(L_INFO, "Stage %s", stage->name);
 
-    _current_stage->err = NULL;
     _current_stage = stage;
+    _current_stage->err = NULL;
 
     for (const struct stage_step *step = stage->work; step != NULL;
                                                           step++) {

@@ -10,6 +10,8 @@
 #include "server.h"
 #include "log.h"
 #include "ubus.h"
+#include "thread.h"
+#include "nak_signal.h"
 
 #define PID_PATH "/run/nakd/nakd.pid"
 
@@ -52,11 +54,17 @@ int main(int argc, char *argv[]) {
 
     /* TODO: CHECK IF CURRENT USER IS ROOT AND IF NAKD USER EXISTS */
 
+    nakd_signal_init();
+    nakd_thread_init();
     nakd_ubus_init();
     nakd_server_init();
-    nakd_accept_loop();
+
+    nakd_sigwait_loop();
+
     nakd_server_cleanup();
     nakd_ubus_free();
+    nakd_thread_cleanup();
+    nakd_signal_cleanup();
 
     nakd_log_close();
     return 0;

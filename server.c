@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <errno.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <json-c/json.h>
@@ -15,10 +16,10 @@
 #include "log.h"
 #include "misc.h"
 #include "jsonrpc.h"
+#include "thread.h"
 
 /* TODO nice to have: implement w/ epoll, threadpool and workqueue */
 
-#define CONNECTION_THREAD_STACK_SIZE 65535
 #define MAX_CONNECTIONS     32
 #define SOCK_PATH      "/run/nakd/nakd.sock"
 
@@ -26,20 +27,22 @@ static struct sockaddr_un _nakd_sockaddr;
 static int                _nakd_sockfd;
 
 struct connection {
-    pthread_t thread;
-
+    struct nakd_thread *thread;
     int sockfd;
     int active;
+    int shutdown;
 } static _connections[MAX_CONNECTIONS];
-pthread_mutex_t _connections_mutex;
+static pthread_mutex_t _connections_mutex;
 
-sem_t _connections_sem;
+static sem_t _connections_sem;
 
 static pthread_mutex_t _shutdown_mutex;
 static pthread_cond_t _shutdown_cv;
 
+static struct nakd_thread *_server_thread;
+static int _server_shutdown;
+
 static int _unit_initialized;
-static int _shutdown;
 
 /* doubly-prefixed functions aren't thread-safe */
 
@@ -63,14 +66,15 @@ static struct connection *__add_connection(int sock,
 
     conn->sockfd = sock;
     conn->active = 1;
+    conn->shutdown = 0;
     return conn;
 }
 
 static void __free_connection(struct connection *conn) {
     nakd_log_execution_point();
 
-    conn->active = 0;
     pthread_mutex_lock(&_shutdown_mutex);
+    conn->active = 0;
     sem_post(&_connections_sem);
     pthread_cond_signal(&_shutdown_cv);
     pthread_mutex_unlock(&_shutdown_mutex);
@@ -82,7 +86,7 @@ static void __close_connection(struct connection *conn) {
     close(conn->sockfd);
 }
 
-static int _message_loop(int sock) {
+static int _message_loop(struct connection *conn) {
    struct sockaddr_un client_addr;
     socklen_t client_len = sizeof(struct sockaddr_un);
     char message_buf[4096];
@@ -102,6 +106,12 @@ static int _message_loop(int sock) {
 
     for (;;) {
         do {
+            if (conn->shutdown) {
+                nakd_log(L_DEBUG, "Shutting down connection thread, "
+                                          "sockfd=%d", conn->sockfd);
+                goto ret;
+            }
+
             if (jerr == json_tokener_continue) {
                 nakd_log(L_DEBUG, "Parsing incoming message, offset: %d",
                                                       jtok->char_offset);
@@ -114,24 +124,25 @@ static int _message_loop(int sock) {
              */
             parse_offset = jtok->char_offset < nb_read ? jtok->char_offset : 0;
             if (!parse_offset) {
-                if (_shutdown) {
-                    /* don't read another request if about to shut down */
-                    nakd_log(L_DEBUG, "Shutting down connection thread, "
-                                                      "sockfd=%d", sock);
-                    goto ret;
-                }
+                /* Don't update nb_read if interrupted. */
+                int rcvfrom_s;
 
-                if ((nb_read = recvfrom(sock, message_buf, sizeof message_buf, 0,
-                          (struct sockaddr *) &client_addr, &client_len)) < 0) { 
-                    nakd_log(L_DEBUG, "recvfrom() < 0, closing connection (%s)",
-                                                             strerror(nb_read));
+                if ((rcvfrom_s = recvfrom(conn->sockfd, message_buf,
+                      sizeof message_buf, 0, (struct sockaddr *) 
+                              &client_addr, &client_len)) == -1) { 
+                    if (errno == EINTR)
+                        continue;
+
+                    nakd_log(L_NOTICE, "Closing connection (%s)",
+                                              strerror(nb_read));
                     rval = 1;
                     goto ret;
-                } else if (!nb_read) {
+                } else if (!rcvfrom_s) {
                     /* Handle orderly shutdown. */
                     nakd_log(L_DEBUG, "Client hung up.");
                     goto ret;
                 }
+                nb_read = rcvfrom_s;
                 nakd_log(L_DEBUG, "Read %d bytes.", nb_read);
 
                 /* remaining bytes to parse */
@@ -167,12 +178,16 @@ static int _message_loop(int sock) {
             jrstr = json_object_get_string(jresponse);
 
             while (nb_resp = strlen(jrstr)) {
-                nb_sent = sendto(sock, jrstr, nb_resp, 0,
-                        (struct sockaddr *) &client_addr,
-                                             client_len);
-                if (nb_sent < 0) {
+                nb_sent = sendto(conn->sockfd, jrstr, nb_resp, 0,
+                              (struct sockaddr *) &client_addr,
+                                                   client_len);
+                if (nb_sent = -1) {
+                    if (errno == EINTR)
+                        continue;
+
                     nakd_log(L_NOTICE,
-                        "Couldn't send response, closing connection.");
+                        "Couldn't send response, closing connection. (%s)",
+                                                          strerror(errno));
                     rval = 1;
                     goto ret;
                 }
@@ -238,22 +253,24 @@ static void _connection_cleanup(void *arg) {
     pthread_mutex_unlock(&_connections_mutex);
 }
 
-static void *_connection_thread(void *thr_data) {
-    int rval;
-    struct connection *conn = thr_data; 
+static void _connection_setup(struct nakd_thread *thread) {
+    struct connection *conn = thread->priv; 
 
     nakd_log(L_DEBUG, "Created connection thread, starting message loop");
 
     pthread_cleanup_push(_connection_cleanup, conn);
-    rval = _message_loop(conn->sockfd);
+    _message_loop(conn);
     pthread_cleanup_pop(1);
-    return rval;
+}
+
+static void _connection_shutdown(struct nakd_thread *thread) {
+    struct connection *conn = thread->priv;
+    conn->shutdown = 1;
 }
 
 static struct connection *_handle_connection(int sock,
                        struct sockaddr_un *sockaddr) {
     struct connection *conn;
-    pthread_attr_t attr;
 
     nakd_log_execution_point();
 
@@ -264,12 +281,10 @@ static struct connection *_handle_connection(int sock,
         return NULL;
     }
 
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_attr_setstacksize(&attr, CONNECTION_THREAD_STACK_SIZE);
-
     nakd_log(L_DEBUG, "Creating connection thread");
-    if (pthread_create(&conn->thread, &attr, _connection_thread, conn)) {
+    if (nakd_thread_create_detached(_connection_setup,
+                                 _connection_shutdown,
+                               conn, &conn->thread)) {
         nakd_log(L_CRIT, "Couldn't create a connection thread");
         conn = NULL;
     }
@@ -278,35 +293,13 @@ static struct connection *_handle_connection(int sock,
     return conn;
 }
 
-void nakd_server_init(void) {
-    if (!_unit_initialized) {
-        pthread_mutex_init(&_connections_mutex, NULL);
-        pthread_mutex_init(&_shutdown_mutex, NULL);
-        pthread_cond_init(&_shutdown_cv, NULL);
-        sem_init(&_connections_sem, 0, MAX_CONNECTIONS);
-
-        _unit_initialized = 1;
-    }
-}
-
-void nakd_server_cleanup(void) {
-    if (!_unit_initialized)
-        return;
-
-    nakd_shutdown_connections();
-    sem_destroy(&_connections_sem);
-    pthread_cond_destroy(&_shutdown_cv);
-    pthread_mutex_destroy(&_shutdown_mutex);
-    pthread_mutex_destroy(&_connections_mutex);
-}
-
 int nakd_active_connections(void) {
     int value;
     sem_getvalue(&_connections_sem, &value);
     return MAX_CONNECTIONS - value;
 }
 
-void nakd_accept_loop(void) {
+static void _accept_loop(void) {
     int c_sock;
     pid_t handler_pid;
     struct sockaddr_un c_sockaddr;
@@ -318,15 +311,22 @@ void nakd_accept_loop(void) {
     if (!_nakd_sockfd)
         _create_unix_socket();
 
-    while(!_shutdown) {
+    while(!_server_shutdown) {
         sem_wait(&_connections_sem);
         nakd_log(L_DEBUG, "%d connection slot(s) available.",
                 MAX_CONNECTIONS - nakd_active_connections());
-        nakd_assert((c_sock = accept(_nakd_sockfd, (struct sockaddr *)
-                                         (&c_sockaddr), &len)) != -1);
+        c_sock = accept(_nakd_sockfd, (struct sockaddr *)(&c_sockaddr), &len);
+        if (c_sock == -1) {
+            sem_post(&_connections_sem);
+
+            if (errno == EINTR)
+                continue;
+
+            nakd_terminate("Can't accept new connections (%s)", strerror(errno));
+        }
+
         nakd_log(L_INFO, "Connection accepted, %d connection(s) currently "
                                      "active.", nakd_active_connections());
-
         _handle_connection(c_sock, &c_sockaddr);
     }
 
@@ -335,14 +335,67 @@ void nakd_accept_loop(void) {
         nakd_terminate("unlink()");
 }
 
-void nakd_shutdown_connections(void) {
-    int connections;
-    _shutdown = 1;
+static void _shutdown_connections(void) {
+    for (struct connection *conn = _connections;
+         conn < ARRAY_END(_connections); conn++) {
+        if (conn->active)
+            nakd_thread_kill(conn->thread);
+    }
 
+    int connections;
+    pthread_mutex_lock(&_shutdown_mutex);
     while (connections = nakd_active_connections()) {
-        pthread_mutex_lock(&_shutdown_mutex);
         nakd_log(L_INFO, "Shutting down connections, %d remaining", connections);
         pthread_cond_wait(&_shutdown_cv, &_shutdown_mutex);
         pthread_mutex_unlock(&_shutdown_mutex);
     }
+}
+
+/* inside newly-created thread */
+static void _server_thread_setup(struct nakd_thread *thread) {
+    _accept_loop();
+    /* _accept_loop() will return only if _server_shutdown == 1 */
+    _shutdown_connections();
+}
+
+static void _server_thread_shutdown(struct nakd_thread *thread) {
+    _server_shutdown = 1;
+}
+
+static int _create_server_thread(void) {
+    nakd_log(L_DEBUG, "Creating server thread.");
+    if (nakd_thread_create_joinable(_server_thread_setup,
+                                 _server_thread_shutdown,
+                                  NULL, &_server_thread)) {
+        nakd_log(L_CRIT, "Couldn't create server thread.");
+        return 1;
+    }
+    return 0;
+}
+
+void nakd_server_init(void) {
+    if (!_unit_initialized) {
+        pthread_mutex_init(&_connections_mutex, NULL);
+        pthread_mutex_init(&_shutdown_mutex, NULL);
+        pthread_cond_init(&_shutdown_cv, NULL);
+        sem_init(&_connections_sem, 0, MAX_CONNECTIONS);
+
+        _unit_initialized = 1;
+        _create_server_thread();
+    }
+}
+
+void nakd_server_cleanup(void) {
+    nakd_log_execution_point();
+
+    if (!_unit_initialized)
+        return;
+
+    nakd_thread_kill(_server_thread);
+
+    sem_destroy(&_connections_sem);
+    pthread_cond_destroy(&_shutdown_cv);
+    pthread_mutex_destroy(&_shutdown_mutex);
+    pthread_mutex_destroy(&_connections_mutex);
+    _unit_initialized = 0;
 }

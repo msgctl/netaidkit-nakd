@@ -257,6 +257,9 @@ int nakd_stop_openvpn(void) {
     /* Sending a SIGTERM to _openvpn_pid wouldn't deliver it to its child
      * processes, hence delivery via the management console.
      */
+
+    /* TODO kill process group */
+
     if (_mgmt_signal("SIGTERM")) {
         /* In case the signal couldn't have been sent this way: */
         if (_kill_openvpn(SIGTERM))

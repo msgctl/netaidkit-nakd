@@ -67,7 +67,6 @@ int nakd_uci_option_foreach_pkg(const char *package, const char *option_name,
     struct uci_package *uci_pkg;
     int cb_calls = 0;
     
-    nakd_log(L_DEBUG, "Loading UCI package %s", package);
     uci_pkg = nakd_load_uci_package(package);
     if (package == NULL)
         return 1;

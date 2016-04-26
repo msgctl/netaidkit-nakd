@@ -29,32 +29,29 @@ struct uci_package *nakd_load_uci_package(const char *name) {
     return pkg;
 }
 
-char **nakd_list_packages(void) {
-    char **packages;
-
-    if ((uci_list_configs(uci_ctx, &packages) != UCI_OK)) {
-        nakd_log(L_CRIT, "Couldn't enumerate UCI packages");
-        return NULL;
-    }
-    return packages;
-}
-
 /* Execute a callback for every option 'option_name' */
 int nakd_uci_option_foreach(const char *option_name,
                       nakd_uci_option_foreach_cb cb,
                                     void *cb_priv) {
-    char **uci_packages = nakd_list_packages();
-    if (uci_packages == NULL)
+    char **uci_packages;
+    if ((uci_list_configs(uci_ctx, &uci_packages) != UCI_OK)) {
+        nakd_log(L_CRIT, "Couldn't enumerate UCI packages");
         return -1;
+    }
 
     int cb_calls = 0;
     for (char **package = uci_packages; *package != NULL; package++) {
         int pkg_calls = nakd_uci_option_foreach_pkg(*package, option_name,
                                                              cb, cb_priv);
-        if (pkg_calls < 0)
-            return -1;
+        if (pkg_calls < 0) {
+            cb_calls = -1;
+            goto free;
+        }
         cb_calls += pkg_calls;
     }
+
+free:
+    free(uci_packages);
     return cb_calls;
 }
 

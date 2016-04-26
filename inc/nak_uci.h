@@ -6,7 +6,6 @@ typedef int (*nakd_uci_option_foreach_cb)(struct uci_option *option,
                                                      void *cb_priv);
 
 struct uci_package *nakd_load_uci_package(const char *name);
-char **nakd_list_packages(void);
 int nakd_uci_option_foreach(const char *option_name,
                       nakd_uci_option_foreach_cb cb,
                                      void *cb_priv);

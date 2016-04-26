@@ -26,6 +26,7 @@ static const int _sigwait[] = {
     SIGQUIT,
     SIGHUP,
     SIGTERM,
+    SIGALRM,
     0
 };
 
@@ -59,7 +60,7 @@ static struct nakd_signal_handler *_alloc_handler() {
     return ret;
 }
 
-void nakd_add_handler(nakd_signal_handler impl) {
+void nakd_signal_add_handler(nakd_signal_handler impl) {
     struct nakd_signal_handler *last_handler;
 
     if (_handlers == NULL) {
@@ -83,16 +84,17 @@ static void _free_handlers() {
     }
 }
 
-static void _sighandler(int signum) {
+static void _sighandler(siginfo_t *siginfo) {
     int handled = 0;
     for (struct nakd_signal_handler *handler = _handlers;
          handler->next != NULL; handler = handler->next) {
-        if (!handler->impl(signum))
+        if (!handler->impl(siginfo))
             handled = 1;
     }
 
     if (!handled) {
-        nakd_log(L_INFO, "%s caught, terminating.", strsignal(signum));
+        nakd_log(L_INFO, "%s caught, terminating.",
+                     strsignal(siginfo->si_signo));
         _shutdown = 1;
     }
 }
@@ -101,9 +103,9 @@ void nakd_sigwait_loop(void) {
     sigset_t set = _sigset(_sigwait);
 
     while (!_shutdown) {
-        int signal;
-        if (!sigwait(&set, &signal)) {
-            _sighandler(signal);
+        siginfo_t siginfo;
+        if (!sigwaitinfo(&set, &siginfo)) {
+            _sighandler(&siginfo);
         }
     }
 }

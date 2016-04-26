@@ -13,6 +13,7 @@
 #include "thread.h"
 #include "nak_signal.h"
 #include "config.h"
+#include "timer.h"
 
 #define PID_PATH "/run/nakd/nakd.pid"
 
@@ -58,6 +59,7 @@ int main(int argc, char *argv[]) {
     nakd_signal_init();
     nakd_config_init();
     nakd_thread_init();
+    nakd_timer_init();
     nakd_ubus_init();
     nakd_server_init();
 
@@ -65,6 +67,7 @@ int main(int argc, char *argv[]) {
 
     nakd_server_cleanup();
     nakd_ubus_free();
+    nakd_timer_cleanup();
     nakd_thread_cleanup();
     nakd_config_cleanup();
     nakd_signal_cleanup();

@@ -16,7 +16,6 @@ static const int _sigmask[] = {
     SIGHUP,
     SIGTERM,
     SIGALRM,
-    NAKD_THREAD_SHUTDOWN_SIGNAL,
     0
 };
 

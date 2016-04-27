@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <string.h>
+#include <errno.h>
 #include "nak_signal.h"
 #include "log.h"
 #include "thread.h"
@@ -103,8 +104,10 @@ void nakd_sigwait_loop(void) {
 
     while (!_shutdown) {
         siginfo_t siginfo;
-        if (!sigwaitinfo(&set, &siginfo)) {
+        if (sigwaitinfo(&set, &siginfo) != -1) {
             _sighandler(&siginfo);
+        } else {
+            nakd_terminate("sigwaitinfo(): %s", strerror(errno));
         }
     }
 }

@@ -181,7 +181,7 @@ static int _message_loop(struct connection *conn) {
                 nb_sent = sendto(conn->sockfd, jrstr, nb_resp, 0,
                               (struct sockaddr *) &client_addr,
                                                    client_len);
-                if (nb_sent = -1) {
+                if (nb_sent == -1) {
                     if (errno == EINTR)
                         continue;
 

@@ -93,9 +93,12 @@ static void _sighandler(siginfo_t *siginfo) {
     }
 
     if (!handled) {
-        nakd_log(L_INFO, "%s caught, terminating.",
+        nakd_log(L_NOTICE, "%s caught, terminating.",
                      strsignal(siginfo->si_signo));
         _shutdown = 1;
+    } else {
+        nakd_log(L_INFO, "Handled signal \"%s\".",
+                     strsignal(siginfo->si_signo));
     }
 }
 

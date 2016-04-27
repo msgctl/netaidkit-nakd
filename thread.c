@@ -47,7 +47,7 @@ int nakd_active_threads() {
 }
 
 static void _cleanup_thread(void *priv) {
-   struct nakd_thread *thr = (struct nakd_thread *)(thr);
+    struct nakd_thread *thr = (struct nakd_thread *)(priv);
 
     nakd_assert(_unit_initialized);
 

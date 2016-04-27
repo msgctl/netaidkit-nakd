@@ -2,8 +2,8 @@
 #define NAKD_TIMER_H
 
 struct nakd_timer;
-typedef int (*nakd_timer_handler)(siginfo_t *timer_info,
-                              struct nakd_timer *timer);
+typedef void (*nakd_timer_handler)(siginfo_t *timer_info,
+                               struct nakd_timer *timer);
 struct nakd_timer {
     timer_t id;
     nakd_timer_handler handler;

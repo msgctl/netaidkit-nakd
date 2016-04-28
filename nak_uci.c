@@ -2,12 +2,16 @@
 #include "nak_uci.h"
 #include "log.h"
 
-static struct uci_context *uci_ctx = NULL;
+static struct uci_context *_uci_ctx = NULL;
 
-static int init_uci_ctx() {
-    if (!uci_ctx)
-        uci_ctx = uci_alloc_context();
-    return !(uci_ctx != NULL);
+void nakd_uci_init(void) {
+    _uci_ctx = uci_alloc_context();
+    if (_uci_ctx == NULL)
+        nakd_terminate("Couldn't initialize UCI context.");
+}
+
+void nakd_uci_cleanup(void) {
+    /* noop */
 }
 
 struct uci_package *nakd_load_uci_package(const char *name) {
@@ -16,12 +20,7 @@ struct uci_package *nakd_load_uci_package(const char *name) {
     nakd_log(L_INFO, "Loading UCI package \"%s\"", name);
     nakd_assert(name != NULL);
     
-    if (init_uci_ctx()) {
-        nakd_log(L_CRIT, "Couldn't initialize UCI context");
-        return NULL;
-    }
-
-    if (uci_load(uci_ctx, name, &pkg)) {
+    if (uci_load(_uci_ctx, name, &pkg)) {
         nakd_log(L_CRIT, "Couldn't load UCI package \"%s\"", name);
         return NULL;
     }
@@ -34,7 +33,7 @@ int nakd_uci_option_foreach(const char *option_name,
                       nakd_uci_option_foreach_cb cb,
                                     void *cb_priv) {
     char **uci_packages;
-    if ((uci_list_configs(uci_ctx, &uci_packages) != UCI_OK)) {
+    if ((uci_list_configs(_uci_ctx, &uci_packages) != UCI_OK)) {
         nakd_log(L_CRIT, "Couldn't enumerate UCI packages");
         return -1;
     }
@@ -96,15 +95,15 @@ int nakd_uci_option_foreach_pkg(const char *package, const char *option_name,
 
 int nakd_uci_save(struct uci_package *pkg) {
     nakd_log(L_INFO, "Saving UCI package \"%s\"", pkg->e.name);
-    return uci_save(uci_ctx, pkg);
+    return uci_save(_uci_ctx, pkg);
 }
 
 int nakd_uci_commit(struct uci_package **pkg, bool overwrite) {
     nakd_log(L_DEBUG, "Commiting changes to UCI package \"%s\"", (*pkg)->e.name);
-    return uci_commit(uci_ctx, pkg, overwrite);
+    return uci_commit(_uci_ctx, pkg, overwrite);
 }
 
 int nakd_unload_uci_package(struct uci_package *pkg) {
     nakd_log(L_DEBUG, "Unloading UCI package \"%s\"", pkg->e.name);
-    return uci_unload(uci_ctx, pkg);
+    return uci_unload(_uci_ctx, pkg);
 }

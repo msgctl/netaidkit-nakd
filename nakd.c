@@ -17,6 +17,7 @@
 #include "led.h"
 #include "event.h"
 #include "netintf.h"
+#include "nak_uci.h"
 
 #define PID_PATH "/run/nakd/nakd.pid"
 
@@ -60,6 +61,7 @@ int main(int argc, char *argv[]) {
     /* TODO: CHECK IF CURRENT USER IS ROOT AND IF NAKD USER EXISTS */
 
     nakd_signal_init();
+    nakd_uci_init();
     nakd_config_init();
     nakd_thread_init();
     nakd_event_init();
@@ -79,6 +81,7 @@ int main(int argc, char *argv[]) {
     nakd_event_cleanup();
     nakd_thread_cleanup();
     nakd_config_cleanup();
+    nakd_uci_cleanup();
     nakd_signal_cleanup();
 
     nakd_log_close();

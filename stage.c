@@ -47,7 +47,7 @@ static struct stage _stages[] = {
                 .desc = "",
                 .work = _run_stage_script 
            },
-           NULL
+           {}
         },
         .hooks = _firewall_hooks,
 
@@ -72,7 +72,7 @@ static struct stage _stages[] = {
                 .desc = "",
                 .work = _run_stage_script 
            },
-           NULL
+           {}
         },
         .hooks = _firewall_hooks,
 
@@ -97,7 +97,7 @@ static struct stage _stages[] = {
                 .desc = "",
                 .work = _start_openvpn
            },
-           NULL           
+           {}
         },
         .hooks = _firewall_hooks,
 
@@ -122,7 +122,7 @@ static struct stage _stages[] = {
                 .desc = "",
                 .work = _run_stage_script 
            },
-           NULL
+           {}
         },
         .hooks = _firewall_hooks,
 
@@ -237,7 +237,7 @@ int nakd_stage_spec(struct stage *stage) {
 }
 
 int nakd_stage(const char *stage_name) {
-    for (struct stage *stage = _stages; stage != NULL; stage++) {
+    for (struct stage *stage = _stages; stage->name != NULL; stage++) {
         if (!strcmp(stage->name, stage_name))
             return nakd_stage_spec(stage);
     }

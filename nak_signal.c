@@ -86,19 +86,17 @@ static void _free_handlers() {
 
 static void _sighandler(siginfo_t *siginfo) {
     int handled = 0;
-    for (struct nakd_signal_handler *handler = _handlers;
-         handler->next != NULL; handler = handler->next) {
+    struct nakd_signal_handler *handler = _handlers;
+    while (handler != NULL) {
         if (!handler->impl(siginfo))
             handled = 1;
+        handler = handler->next;
     }
-
+    
     if (!handled) {
         nakd_log(L_NOTICE, "%s caught, terminating.",
                      strsignal(siginfo->si_signo));
         _shutdown = 1;
-    } else {
-        nakd_log(L_INFO, "Handled signal \"%s\".",
-                     strsignal(siginfo->si_signo));
     }
 }
 

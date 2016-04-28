@@ -23,7 +23,7 @@ json_object *cmd_interface_state(json_object *jcmd, void *arg) {
         goto response;
     }
 
-    nakd_ubus_call("network.device", "status", "{ \"name\": \"eth0\" }", _handler, NULL);
+    nakd_ubus_call("network.device", "status", "{}", _handler, NULL);
 
     json_object *jresult = json_object_new_string("OK");
     jresponse = nakd_jsonrpc_response_success(jcmd, jresult);

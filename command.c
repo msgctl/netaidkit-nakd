@@ -7,7 +7,7 @@
 #include "log.h"
 #include "misc.h"
 #include "openvpn.h"
-#include "interface.h"
+#include "netintf.h"
 
 static command commands[] = {
 //    { "getapnam", get_ap_name, 0 },

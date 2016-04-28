@@ -1,7 +1,7 @@
 #include <json-c/json.h>
 #include <libubox/blobmsg_json.h>
 #include <libubus.h>
-#include "interface.h"
+#include "netintf.h"
 #include "jsonrpc.h"
 #include "ubus.h"
 #include "log.h"

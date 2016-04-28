@@ -12,7 +12,7 @@
 #include "config.h"
 
 #define MAX_CONDITIONS 16
-#define UPDATE_INTERVAL 100 /* ms */
+#define UPDATE_INTERVAL 33 /* ms */
 
 static pthread_mutex_t _led_mutex;
 static struct led_condition _led_conditions[MAX_CONDITIONS];
@@ -165,7 +165,7 @@ static struct led_condition _default = {
     },
     .blink.on = 1,
     .blink.interval = 100,
-    .blink.count = -1, /*i nfinite */
+    .blink.count = -1, /*infinite */
 };
 
 void nakd_led_init(void) {

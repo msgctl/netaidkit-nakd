@@ -226,8 +226,8 @@ int nakd_stage_spec(struct stage *stage) {
     _current_stage = stage;
     _current_stage->err = NULL;
 
-    for (const struct stage_step *step = stage->work; step != NULL;
-                                                          step++) {
+    for (const struct stage_step *step = stage->work; step->name != NULL;
+                                                                step++) {
         nakd_log(L_INFO, "Stage %s: running step %s", stage->name, step->name);
         if (step->work(stage))
             return 1;

@@ -135,18 +135,23 @@ static void __update_condition(void) {
     }
 }
 
+static void __swap_condition(struct led_condition *next) {
+    nakd_log(L_DEBUG, "Next LED condition: %s", next->name);
+    _current_condition = next;
+}
+
 static void _led_sighandler(siginfo_t *timer_info, struct nakd_timer *timer) {
     pthread_mutex_lock(&_led_mutex);
     struct led_condition *next = __choose_condition();
     if (next != NULL) {
         if (_current_condition == NULL) {
-            _current_condition = next;
+            __swap_condition(next);
         } else {
             if (next->priority > _current_condition->priority)
                 _led_condition_remove(_current_condition);
 
             if (!_current_condition->active)
-                _current_condition = next;
+                __swap_condition(next);
         }
     }
 

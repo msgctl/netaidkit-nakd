@@ -18,6 +18,7 @@
 #include "event.h"
 #include "netintf.h"
 #include "nak_uci.h"
+#include "notification.h"
 
 #define PID_PATH "/run/nakd/nakd.pid"
 
@@ -67,6 +68,7 @@ int main(int argc, char *argv[]) {
     nakd_event_init();
     nakd_timer_init();
     nakd_led_init();
+    nakd_notification_init();
     nakd_ubus_init();
     nakd_netintf_init();
     nakd_server_init();
@@ -76,6 +78,7 @@ int main(int argc, char *argv[]) {
     nakd_server_cleanup();
     nakd_netintf_cleanup();
     nakd_ubus_free();
+    nakd_notification_cleanup();
     nakd_led_cleanup();
     nakd_timer_cleanup();
     nakd_event_cleanup();

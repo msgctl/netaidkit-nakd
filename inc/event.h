@@ -21,7 +21,7 @@ enum nakd_event {
 
 extern const char *nakd_event_name[];
 
-typedef int (*nakd_event_handler)(enum nakd_event event, void *priv);
+typedef void (*nakd_event_handler)(enum nakd_event event, void *priv);
 
 struct event_handler {
     enum nakd_event event;

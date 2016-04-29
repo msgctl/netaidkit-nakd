@@ -157,7 +157,7 @@ static void _led_sighandler(siginfo_t *timer_info, struct nakd_timer *timer) {
 
 static struct led_condition _default = {
     .name = "default",
-    .priority = 0,
+    .priority = LED_PRIORITY_DEFAULT,
     .states = (struct led_state[]){
         { "LED1_path", NULL, 1 },
         { "LED2_path", NULL, 1 },

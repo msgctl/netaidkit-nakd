@@ -15,9 +15,17 @@ struct led_blink {
     int state;
 };
 
+enum led_priority {
+    LED_PRIORITY_DEFAULT,
+
+    LED_PRIORITY_MODE,
+    LED_PRIORITY_NOTIFICATION,
+    LED_PRIORITY_ACTION_NEEDED
+};
+
 struct led_condition {
     char *name;
-    int priority;
+    enum led_priority priority;
     struct led_state *states;
     struct led_blink blink;
 

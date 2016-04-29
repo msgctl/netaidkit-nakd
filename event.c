@@ -57,6 +57,9 @@ struct event_handler *nakd_event_add_handler(enum nakd_event event,
     handler->priv = priv;
     handler->active = 1;
     pthread_mutex_unlock(&_event_mutex);
+
+    nakd_log(L_DEBUG, "Added event handler for %s.", nakd_event_name[event]);
+    return handler;
 }
 
 void nakd_event_remove_handler(struct event_handler *handler) {
@@ -66,6 +69,7 @@ void nakd_event_remove_handler(struct event_handler *handler) {
 }
 
 static void __handle_event(enum nakd_event event) {
+    nakd_log(L_DEBUG, "Looking for %s event handlers.", nakd_event_name[event]);
     for (struct event_handler *handler = _event_handlers;
          handler < ARRAY_END(_event_handlers); handler++) {
         if (handler->active && handler->event == event) {
@@ -76,6 +80,7 @@ static void __handle_event(enum nakd_event event) {
 }
 
 static void __handle_events(void) {
+    nakd_log(L_DEBUG, "Running event handlers.");
     for (enum nakd_event *ev = _events; ev < ARRAY_END(_events); ev++) {
         if (*ev != EVENT_UNSPECIFIED) {
             __handle_event(*ev);
@@ -114,8 +119,8 @@ void nakd_event_push(enum nakd_event event) {
     for (struct event_handler *handler = _event_handlers;
          handler < ARRAY_END(_event_handlers); handler++) {
         if (handler->active && handler->event == event) {
-            for (enum nakd_event *ev; ev < ARRAY_END(_events); ev++) {
-                if (*ev != EVENT_UNSPECIFIED) {
+            for (enum nakd_event *ev = _events; ev < ARRAY_END(_events); ev++) {
+                if (*ev == EVENT_UNSPECIFIED) {
                     *ev = event;
                     break;
                 }

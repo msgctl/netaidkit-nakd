@@ -1,6 +1,10 @@
 #ifndef NAKD_UCI_H
 #define NAKD_UCI_H
+
+/* -std=c99 */
+#define typeof __typeof
 #include <uci.h>
+#undef typeof
 
 typedef int (*nakd_uci_option_foreach_cb)(struct uci_option *option,
                                                      void *cb_priv);

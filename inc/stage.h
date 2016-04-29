@@ -1,7 +1,7 @@
 #ifndef NAKD_STAGE_H
 #define NAKD_STAGE_H
 #include <json-c/json.h>
-#include "uci.h"
+#include "nak_uci.h"
 #include "hooks.h"
 
 struct stage;

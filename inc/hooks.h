@@ -1,6 +1,6 @@
 #ifndef NAKD_HOOKS_H
 #define NAKD_HOOKS_H
-#include <uci.h>
+#include "nak_uci.h"
 
 struct nakd_uci_hook {
     const char *name;

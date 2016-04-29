@@ -1,6 +1,3 @@
-#include <uci.h>
-#include <libubox/blobmsg_json.h>
-#include <libubus.h>
 #include <string.h>
 #include <pthread.h>
 #include <json-c/json.h>

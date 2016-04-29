@@ -1,4 +1,3 @@
-#include <uci.h>
 #include "nak_uci.h"
 #include "log.h"
 

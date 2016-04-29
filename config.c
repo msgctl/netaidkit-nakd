@@ -1,6 +1,5 @@
 #include <string.h>
 #include <pthread.h>
-#include <uci.h>
 #include "nak_uci.h"
 #include "log.h"
 #include "config.h"

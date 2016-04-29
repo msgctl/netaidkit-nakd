@@ -1,5 +1,4 @@
 #include <strings.h>
-#include <uci.h>
 #include "hooks.h"
 #include "nak_uci.h"
 #include "log.h"

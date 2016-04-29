@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <uci.h>
 #include <string.h>
 #include <linux/limits.h>
 #include <json-c/json.h>
@@ -10,6 +9,7 @@
 #include "jsonrpc.h"
 #include "shell.h"
 #include "openvpn.h"
+#include "nak_uci.h"
 
 #define NAKD_STAGE_SCRIPT_PATH NAKD_SCRIPT_PATH "stage/"
 #define NAKD_STAGE_SCRIPT_FMT (NAKD_STAGE_SCRIPT_PATH "%s" ".sh")

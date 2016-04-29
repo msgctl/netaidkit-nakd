@@ -94,8 +94,8 @@ static void _event_loop(struct nakd_thread *thread) {
     while (!_event_loop_shutdown) {
         pthread_cond_wait(&_event_thread_cv, &_event_mutex);
         __handle_events();
-        pthread_mutex_unlock(&_event_mutex);
     }
+    pthread_mutex_unlock(&_event_mutex);
 }
 
 static void _event_loop_shutdown_cb(struct nakd_thread *thread) {

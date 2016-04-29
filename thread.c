@@ -222,8 +222,8 @@ static void _wait_for_completion(void) {
     while (threads = __active_threads()) {
         nakd_log(L_INFO, "Shutting down threads, %d remaining", threads);
         pthread_cond_wait(&_shutdown_cv, &_shutdown_mutex);
-        pthread_mutex_unlock(&_shutdown_mutex);
     }
+    pthread_mutex_unlock(&_shutdown_mutex);
 }
 
 int nakd_thread_cleanup(void) {

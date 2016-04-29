@@ -347,8 +347,8 @@ static void _shutdown_connections(void) {
     while (connections = nakd_active_connections()) {
         nakd_log(L_INFO, "Shutting down connections, %d remaining", connections);
         pthread_cond_wait(&_shutdown_cv, &_shutdown_mutex);
-        pthread_mutex_unlock(&_shutdown_mutex);
     }
+    pthread_mutex_unlock(&_shutdown_mutex);
 }
 
 /* inside newly-created thread */

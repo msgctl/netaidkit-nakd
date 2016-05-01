@@ -58,19 +58,16 @@ void nakd_led_condition_remove(const char *name) {
 }
 
 static struct led_condition *__choose_condition(void) {
-    struct led_condition *cond = _led_conditions;
+    struct led_condition *cond = NULL;
 
     for (struct led_condition *iter = _led_conditions;
           iter < ARRAY_END(_led_conditions); iter++) {
-        if (!cond->active)
+        if (!iter->active || iter == _current_condition)
             continue;
 
-        if (iter->priority > cond->priority)
+        if (cond == NULL || iter->priority > cond->priority)
             cond = iter; 
     }
-
-    if (!cond->active)
-        return NULL;
     return cond;
 }
 
@@ -111,8 +108,10 @@ static void __update_condition(void) {
         return;
 
     if (_current_condition->blink.on) {
-        if (!_current_condition->blink.count)
+        if (!_current_condition->blink.count) {
             _led_condition_remove(_current_condition);
+            return;
+        }
 
         struct itimerspec timer_state;
         timer_gettime(_blink_timer, &timer_state);

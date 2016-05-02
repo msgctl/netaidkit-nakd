@@ -39,10 +39,12 @@ static int _kill_openvpn(int signal) {
     nakd_log(L_INFO, "Sending %s to OpenVPN, PID %d", strsignal(signal),
                                                           _openvpn_pid);
 
-    int result = kill(_openvpn_pid, signal);
+    /* Kill whole process group */
+    int result = kill(-_openvpn_pid, signal);
     if (result == -1) {
-        nakd_log(L_WARNING, "Couldn't send %s to OpenVPN, PID %d: %s",
-                    strsignal(signal), _openvpn_pid, strerror(errno));
+        nakd_log(L_WARNING, "Couldn't send %s to OpenVPN process group, "
+                          "pgid %d: %s", strsignal(signal), _openvpn_pid,
+                                                        strerror(errno));
         return -1;
     }
     return 0;
@@ -257,8 +259,6 @@ int nakd_stop_openvpn(void) {
     /* Sending a SIGTERM to _openvpn_pid wouldn't deliver it to its child
      * processes, hence delivery via the management console.
      */
-
-    /* TODO kill process group */
 
     if (_mgmt_signal("SIGTERM")) {
         /* In case the signal couldn't have been sent this way: */

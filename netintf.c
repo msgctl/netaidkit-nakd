@@ -8,6 +8,7 @@
 #include "timer.h"
 #include "event.h"
 #include "nak_uci.h"
+#include "module.h"
 
 #define NETINTF_UBUS_SERVICE "network.device"
 #define NETINTF_UBUS_METHOD "status"
@@ -175,16 +176,18 @@ static void _netintf_update_sighandler(siginfo_t *timer_info,
                                          _netintf_update_cb, NULL);
 }
 
-void nakd_netintf_init(void) {
+static int _netintf_init(void) {
     pthread_mutex_init(&_netintf_mutex, NULL);
     _load_interface_names();
     _netintf_update_timer = nakd_timer_add(NETINTF_UPDATE_INTERVAL,
                                  _netintf_update_sighandler, NULL);
+    return 0;
 }
 
-void nakd_netintf_cleanup(void) {
+static int _netintf_cleanup(void) {
     nakd_timer_remove(_netintf_update_timer);
     pthread_mutex_destroy(&_netintf_mutex);
+    return 0;
 }
 
 json_object *cmd_interface_state(json_object *jcmd, void *arg) {
@@ -205,3 +208,12 @@ json_object *cmd_interface_state(json_object *jcmd, void *arg) {
 response:
     return jresponse;
 }
+
+static struct nakd_module module_netintf = {
+    .name = "netintf",
+    .deps = (const char *[]){ "uci", "ubus", "event", "timer", NULL },
+    .init = _netintf_init,
+    .cleanup = _netintf_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_netintf);

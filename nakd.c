@@ -7,18 +7,9 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "server.h"
 #include "log.h"
-#include "ubus.h"
-#include "thread.h"
 #include "nak_signal.h"
-#include "config.h"
-#include "timer.h"
-#include "led.h"
-#include "event.h"
-#include "netintf.h"
-#include "nak_uci.h"
-#include "notification.h"
+#include "module.h"
 
 #define PID_PATH "/run/nakd/nakd.pid"
 
@@ -61,31 +52,9 @@ int main(int argc, char *argv[]) {
 
     /* TODO: CHECK IF CURRENT USER IS ROOT AND IF NAKD USER EXISTS */
 
-    nakd_signal_init();
-    nakd_uci_init();
-    nakd_config_init();
-    nakd_thread_init();
-    nakd_event_init();
-    nakd_timer_init();
-    nakd_led_init();
-    nakd_notification_init();
-    nakd_ubus_init();
-    nakd_netintf_init();
-    nakd_server_init();
-
+    nakd_init_modules();
     nakd_sigwait_loop();
-
-    nakd_server_cleanup();
-    nakd_netintf_cleanup();
-    nakd_ubus_free();
-    nakd_notification_cleanup();
-    nakd_led_cleanup();
-    nakd_timer_cleanup();
-    nakd_event_cleanup();
-    nakd_thread_cleanup();
-    nakd_config_cleanup();
-    nakd_uci_cleanup();
-    nakd_signal_cleanup();
+    nakd_cleanup_modules();
 
     nakd_log_close();
     return 0;

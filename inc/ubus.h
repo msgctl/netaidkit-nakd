@@ -7,9 +7,7 @@
 #include <libubus.h>
 #undef typeof
 
-int nakd_ubus_init();
 int nakd_ubus_call(const char *namespace, const char* procedure,
        const char *arg, ubus_data_handler_t cb, void *cb_priv);
-void nakd_ubus_free();
 
 #endif

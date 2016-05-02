@@ -17,9 +17,6 @@ struct nakd_thread {
     int active;
 };
 
-int nakd_thread_init(void);
-int nakd_thread_cleanup(void);
-
 int nakd_thread_create_detached(nakd_thread_routine start,
                 nakd_thread_shutdown shutdown, void *priv,
                              struct nakd_thread **thread);

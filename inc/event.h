@@ -31,9 +31,6 @@ struct event_handler {
     int active;
 };
 
-void nakd_event_init(void);
-void nakd_event_cleanup(void);
-
 void nakd_event_push(enum nakd_event event);
 
 struct event_handler *nakd_event_add_handler(enum nakd_event event,

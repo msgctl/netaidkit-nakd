@@ -7,6 +7,8 @@
 #include "timer.h"
 #include "log.h"
 #include "misc.h"
+#include "nak_signal.h"
+#include "module.h"
 
 #define TIMER_SIGNAL SIGALRM
 #define MAX_TIMERS 16
@@ -101,12 +103,23 @@ static void _timer_remove_all(void) {
     pthread_mutex_unlock(&_timers_mutex);
 }
 
-void nakd_timer_init(void) {
+static int _timer_init(void) {
     pthread_mutex_init(&_timers_mutex, NULL);
     nakd_signal_add_handler(_timer_handler);
+    return 0;
 }
 
-void nakd_timer_cleanup(void) {
+static int _timer_cleanup(void) {
     _timer_remove_all();
     pthread_mutex_destroy(&_timers_mutex);
+    return 0;
 }
+
+static struct nakd_module module_timer = {
+    .name = "timer",
+    .deps = (const char *[]){ "signal", NULL },
+    .init = _timer_init,
+    .cleanup = _timer_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_timer);

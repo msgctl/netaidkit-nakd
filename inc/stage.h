@@ -25,7 +25,6 @@ struct stage {
     char *err;
 };
 
-int nakd_stage_init(void);
 int nakd_stage_spec(struct stage *stage);
 int nakd_stage(const char *stage_name);
 

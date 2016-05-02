@@ -32,9 +32,6 @@ struct led_condition {
     int active;
 };
 
-void nakd_led_init(void);
-void nakd_led_cleanup(void);
-
 void nakd_led_condition_add(struct led_condition *cond);
 void nakd_led_condition_remove(const char *name);
 

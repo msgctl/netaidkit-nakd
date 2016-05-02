@@ -3,6 +3,7 @@
 #include <libubox/blobmsg_json.h>
 #include <libubus.h>
 #include "log.h"
+#include "module.h"
 
 #define UBUS_CALL_TIMEOUT 15 * 1000
 
@@ -11,7 +12,7 @@ static struct blob_buf ubus_buf;
 
 static pthread_mutex_t _ubus_mutex;
 
-int nakd_ubus_init() {
+static int _ubus_init(void) {
     pthread_mutex_init(&_ubus_mutex, NULL);
 
     /* defaults to UBUS_UNIX_SOCKET */
@@ -51,11 +52,21 @@ unlock:
     return status;
 }
 
-void nakd_ubus_free() {
+static int _ubus_cleanup(void) {
     pthread_mutex_destroy(&_ubus_mutex);
 
     if (ubus_buf.buf != NULL)
         blob_buf_free(&ubus_buf);
     if (ubus_ctx != NULL)
         ubus_free(ubus_ctx);
+    return 0;
 }
+
+static struct nakd_module module_ubus = {
+    .name = "ubus",
+    .deps = NULL,
+    .init = _ubus_init,
+    .cleanup = _ubus_cleanup 
+};
+
+NAKD_DECLARE_MODULE(module_ubus);

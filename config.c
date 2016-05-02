@@ -3,6 +3,7 @@
 #include "nak_uci.h"
 #include "log.h"
 #include "config.h"
+#include "module.h"
 
 #define CONFIG_UCI_PACKAGE "nakd"
 #define CONFIG_UCI_SECTION "nakd"
@@ -19,12 +20,14 @@ struct nakd_config_default {
     {}
 };
 
-void nakd_config_init(void) {
+static int _config_init(void) {
     pthread_mutex_init(&_config_mutex, NULL);
+    return 0;
 }
 
-void nakd_config_cleanup(void) {
+static int _config_cleanup(void) {
     pthread_mutex_destroy(&_config_mutex);
+    return 0;
 }
 
 static int _default_config_key(const char *key, char **ret) {
@@ -94,3 +97,12 @@ unlock:
     pthread_mutex_unlock(&_config_mutex);
     return status;
 }
+
+static struct nakd_module module_config = {
+    .name = "config",
+    .deps = (const char *[]){ "uci", NULL },
+    .init = _config_init,
+    .cleanup = _config_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_config);

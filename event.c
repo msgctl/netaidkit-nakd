@@ -3,6 +3,7 @@
 #include "thread.h"
 #include "log.h"
 #include "misc.h"
+#include "module.h"
 
 #define MAX_EVENTS 32
 #define MAX_EVENT_HANDLERS 32
@@ -132,15 +133,23 @@ void nakd_event_push(enum nakd_event event) {
     pthread_mutex_unlock(&_event_mutex);
 }
 
-void nakd_event_init(void) {
+static int _event_init(void) {
     pthread_mutex_init(&_event_mutex, NULL);
     pthread_cond_init(&_event_thread_cv, NULL);
     _create_event_thread();
 }
 
-void nakd_event_cleanup(void) {
+static int _event_cleanup(void) {
     nakd_thread_kill(_event_thread);
     pthread_cond_destroy(&_event_thread_cv);
     pthread_mutex_destroy(&_event_mutex);
 }
 
+static struct nakd_module module_event = {
+    .name = "event",
+    .deps = (const char *[]){ "thread", NULL },
+    .init = _event_init,
+    .cleanup = _event_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_event);

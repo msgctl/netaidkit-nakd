@@ -1,16 +1,18 @@
 #include "nak_uci.h"
 #include "log.h"
+#include "module.h"
 
 static struct uci_context *_uci_ctx = NULL;
 
-void nakd_uci_init(void) {
+static int _uci_init(void) {
     _uci_ctx = uci_alloc_context();
     if (_uci_ctx == NULL)
         nakd_terminate("Couldn't initialize UCI context.");
+    return 0;
 }
 
-void nakd_uci_cleanup(void) {
-    /* noop */
+static int _uci_cleanup(void) {
+    return 0;
 }
 
 struct uci_package *nakd_load_uci_package(const char *name) {
@@ -106,3 +108,12 @@ int nakd_unload_uci_package(struct uci_package *pkg) {
     nakd_log(L_DEBUG, "Unloading UCI package \"%s\"", pkg->e.name);
     return uci_unload(_uci_ctx, pkg);
 }
+
+static struct nakd_module module_uci = {
+    .name = "uci",
+    .deps = NULL,
+    .init = _uci_init,
+    .cleanup = _uci_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_uci);

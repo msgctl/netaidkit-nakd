@@ -12,9 +12,6 @@ struct nakd_timer {
     int active;
 };
 
-void nakd_timer_init(void);
-void nakd_timer_cleanup(void);
-
 struct nakd_timer *nakd_timer_add(int interval_ms, nakd_timer_handler handler,
                                                                   void *priv);
 void __nakd_timer_remove(struct nakd_timer *timer);

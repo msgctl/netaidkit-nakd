@@ -18,7 +18,7 @@ all: $(TARGETS)
 -include $(DEPEND)
 
 $(BUILD)/nakd: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) -Tmodule.ld -o $@
 
 $(BUILD)/%.d: %.c
 	$(CC) $(CFLAGS) -MM $< -o $(BUILD)/$*.d

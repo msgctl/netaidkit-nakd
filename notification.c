@@ -3,6 +3,7 @@
 #include "led.h"
 #include "event.h"
 #include "log.h"
+#include "module.h"
 
 static struct led_condition _led_cable_plugged = {
     .name = "Ethernet plugged",
@@ -90,18 +91,29 @@ static void _event_handler(enum nakd_event event, void *priv) {
     }
 }
 
-int nakd_notification_init(void) {
+static int _notification_init(void) {
     for (struct led_event_notification *notification = _event_notifications;
                                       notification->event; notification++) {
         notification->event_handler = 
             nakd_event_add_handler(notification->event, _event_handler, NULL);
     }
+    return 0;
 }
 
-int nakd_notification_cleanup(void) {
+static int _notification_cleanup(void) {
     for (struct led_event_notification *notification = _event_notifications;
                                       notification->event; notification++) {
         if (notification->event_handler != NULL)
             nakd_event_remove_handler(notification->event_handler);
     }
+    return 0;
 }
+
+static struct nakd_module module_notification = {
+    .name = "notification",
+    .deps = (const char *[]){ "event", "led", NULL },
+    .init = _notification_init,
+    .cleanup = _notification_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_notification);

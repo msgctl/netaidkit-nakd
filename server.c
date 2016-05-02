@@ -17,6 +17,7 @@
 #include "misc.h"
 #include "jsonrpc.h"
 #include "thread.h"
+#include "module.h"
 
 /* TODO nice to have: implement w/ epoll, threadpool and workqueue */
 
@@ -373,7 +374,7 @@ static int _create_server_thread(void) {
     return 0;
 }
 
-void nakd_server_init(void) {
+static int _server_init(void) {
     if (!_unit_initialized) {
         pthread_mutex_init(&_connections_mutex, NULL);
         pthread_mutex_init(&_shutdown_mutex, NULL);
@@ -383,13 +384,14 @@ void nakd_server_init(void) {
         _unit_initialized = 1;
         _create_server_thread();
     }
+    return 0;
 }
 
-void nakd_server_cleanup(void) {
+static int _server_cleanup(void) {
     nakd_log_execution_point();
 
     if (!_unit_initialized)
-        return;
+        return 0;
 
     nakd_thread_kill(_server_thread);
 
@@ -398,4 +400,14 @@ void nakd_server_cleanup(void) {
     pthread_mutex_destroy(&_shutdown_mutex);
     pthread_mutex_destroy(&_connections_mutex);
     _unit_initialized = 0;
+    return 0;
 }
+
+static struct nakd_module module_server = {
+    .name = "server",
+    .deps = (const char *[]){ "thread", NULL },
+    .init = _server_init,
+    .cleanup = _server_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_server);

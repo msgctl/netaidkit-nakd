@@ -4,6 +4,7 @@
 #include "nak_signal.h"
 #include "log.h"
 #include "thread.h"
+#include "module.h"
 
 struct nakd_signal_handler {
     nakd_signal_handler impl;
@@ -113,12 +114,21 @@ void nakd_sigwait_loop(void) {
     }
 }
 
-int nakd_signal_init(void) {
+static int _signal_init(void) {
     _set_default_sigmask();
     return 0;
 }
 
-int nakd_signal_cleanup(void) {
+static int _signal_cleanup(void) {
     _free_handlers();
     return 0;
 }
+
+static struct nakd_module module_signal = {
+    .name = "signal",
+    .deps = NULL,
+    .init = _signal_init,
+    .cleanup = _signal_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_signal);

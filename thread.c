@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "log.h"
 #include "misc.h"
+#include "module.h"
 
 #define THREAD_STACK_SIZE 65536
 #define MAX_THREADS 64
@@ -202,7 +203,7 @@ void nakd_thread_killall(void) {
     pthread_mutex_unlock(&_threads_mutex);
 }
 
-int nakd_thread_init(void) {
+static int _thread_init(void) {
     if (!_unit_initialized) {
         pthread_key_create(&_tls_data, NULL);
         pthread_mutex_init(&_threads_mutex, NULL);
@@ -227,7 +228,7 @@ static void _wait_for_completion(void) {
     pthread_mutex_unlock(&_shutdown_mutex);
 }
 
-int nakd_thread_cleanup(void) {
+static int _thread_cleanup(void) {
     if (_unit_initialized) {
         nakd_thread_killall();
         _wait_for_completion();
@@ -239,3 +240,12 @@ int nakd_thread_cleanup(void) {
     }
     return 0;
 }
+
+static struct nakd_module module_thread = {
+    .name = "thread",
+    .deps = (const char *[]){ "signal", NULL },
+    .init = _thread_init,
+    .cleanup = _thread_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_thread);

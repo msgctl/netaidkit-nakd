@@ -10,6 +10,7 @@
 #include "shell.h"
 #include "openvpn.h"
 #include "nak_uci.h"
+#include "module.h"
 
 #define NAKD_STAGE_SCRIPT_PATH NAKD_SCRIPT_PATH "stage/"
 #define NAKD_STAGE_SCRIPT_FMT (NAKD_STAGE_SCRIPT_PATH "%s" ".sh")
@@ -212,11 +213,13 @@ static int _run_uci_hooks(struct stage *stage) {
     return 0;
 }
 
-int nakd_stage_init(void) {
-    nakd_log_execution_point();
-
+static int _stage_init(void) {
     if (_current_stage == NULL)
         return nakd_stage_spec(_default_stage);
+    return 0;
+}
+
+static int _stage_cleanup(void) {
     return 0;
 }
 
@@ -272,3 +275,12 @@ json_object *cmd_stage(json_object *jcmd, void *param) {
 response:
     return jresponse;
 }
+
+static struct nakd_module module_stage = {
+    .name = "stage",
+    .deps = NULL,
+    .init = _stage_init,
+    .cleanup = _stage_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_stage);

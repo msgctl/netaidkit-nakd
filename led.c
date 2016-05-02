@@ -10,6 +10,7 @@
 #include "misc.h"
 #include "timer.h"
 #include "config.h"
+#include "module.h"
 
 #define MAX_CONDITIONS 16
 #define UPDATE_INTERVAL 33 /* ms */
@@ -172,7 +173,7 @@ static struct led_condition _default = {
     .blink.count = -1, /*infinite */
 };
 
-void nakd_led_init(void) {
+static int _led_init(void) {
     pthread_mutex_init(&_led_mutex, NULL);
     _led_timer = nakd_timer_add(UPDATE_INTERVAL, _led_sighandler, NULL);
     nakd_assert(_led_timer != NULL);
@@ -186,8 +187,17 @@ void nakd_led_init(void) {
     nakd_led_condition_add(&_default);
 }
 
-void nakd_led_cleanup(void) {
+static int _led_cleanup(void) {
     timer_delete(_blink_timer);
     nakd_timer_remove(_led_timer);
     pthread_mutex_destroy(&_led_mutex);
 }
+
+static struct nakd_module module_led = {
+    .name = "led",
+    .deps = (const char *[]){ "thread", "timer", NULL },
+    .init = _led_init,
+    .cleanup = _led_cleanup
+};
+
+NAKD_DECLARE_MODULE(module_led);

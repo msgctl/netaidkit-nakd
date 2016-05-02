@@ -85,6 +85,7 @@ static void _setup_shutdown_sighandler(void) {
 
 static void *_thread_setup(void *priv) {
     sigset_t cleanup;
+    sigemptyset(&cleanup);
     sigaddset(&cleanup, NAKD_THREAD_SHUTDOWN_SIGNAL);
     nakd_assert(!pthread_sigmask(SIG_UNBLOCK, &cleanup, NULL));
 

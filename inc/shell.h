@@ -8,26 +8,27 @@
 #define NAKD_SCRIPT_PATH "/usr/share/nakd/scripts/"
 #define NAKD_SCRIPT(filename) (NAKD_SCRIPT_PATH filename)
 
-char *nakd_do_command(const char *args);
-char *nakd_do_command_argv(const char **argv);
+char *nakd_do_command(const char *args, const char *cwd);
+char *nakd_do_command_argv(const char **argv, const char *cwd);
 json_object *nakd_json_do_command(const char *script, json_object *jcmd);
 
 struct cmd_shell_spec {
     const char **argv;
+    const char *cwd;
 };
 
-#define CMD_SHELL_ARGV(name, path, argv...) \
+#define CMD_SHELL_ARGV(name, cwd, path, argv...) \
     { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
-    { (const char*[]){ path, argv, NULL } } }
-#define CMD_SHELL(name, path) \
+    { (const char*[]){ path, argv, NULL }, cwd } }
+#define CMD_SHELL(name, cwd, path) \
     { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
-    { (const char*[]){ path, NULL } } }
+    { (const char*[]){ path, NULL }, cwd } }
 #define CMD_SHELL_NAKD_ARGV(name, path, argv...) \
     { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
-    { (const char*[]){ NAKD_SCRIPT(path), argv, NULL } } }
+    { (const char*[]){ NAKD_SCRIPT(path), argv, NULL }, NAKD_SCRIPT_PATH } }
 #define CMD_SHELL_NAKD(name, path) \
     { name, (cmd_handler)(cmd_shell), &(struct cmd_shell_spec) \
-    { (const char*[]){ NAKD_SCRIPT(path), NULL } } }
+    { (const char*[]){ NAKD_SCRIPT(path), NULL }, NAKD_SCRIPT_PATH } }
 
 json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec);
 

@@ -175,7 +175,7 @@ static int _run_stage_script(struct stage *stage) {
         return 0;
     }
 
-    char *output = nakd_do_command(path);
+    char *output = nakd_do_command(path, NULL);
     if (output != NULL) {
         nakd_log(L_DEBUG, "Stage script output: %s", output);
         free(output);

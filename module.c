@@ -6,7 +6,7 @@ static void _init_module(struct nakd_module *module);
 static void _init_module_byname(const char *name);
 
 /* see: module.ld, module.h */
-extern struct nakd_module **__nakd_module_list;
+extern struct nakd_module *__nakd_module_list[];
 
 static struct nakd_module *_module_byname(const char *name) {
     for (struct nakd_module **module = __nakd_module_list; *module; module++) {
@@ -17,6 +17,8 @@ static struct nakd_module *_module_byname(const char *name) {
 }
 
 static void _init_module(struct nakd_module *module) {
+    module->initialized = 1;
+
     if (module->deps != NULL) {
         for (const char **name = module->deps; *name; name++) {
             struct nakd_module *depm = _module_byname(*name);
@@ -34,12 +36,13 @@ static void _init_module(struct nakd_module *module) {
     if (module->init()) {
         nakd_terminate("Couldn't initialize module %s.", module->name);
     } else {
-        module->initialized = 1;
         nakd_log(L_DEBUG, "Initialized module %s.", module->name);
     }
 }
 
 static void _cleanup_module(struct nakd_module *module) {
+    module->initialized = 0;
+
     /* Clean up dependent modules first */
     for (struct nakd_module **depm = __nakd_module_list; *depm; depm++) {
         if (!(*depm)->initialized || (*depm)->deps == NULL)
@@ -57,7 +60,6 @@ static void _cleanup_module(struct nakd_module *module) {
 
     nakd_log(L_DEBUG, "Cleaning up module: %s", module->name);
     nakd_assert(!module->cleanup());
-    module->initialized = 0;
 }
 
 void nakd_init_modules(void) {

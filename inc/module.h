@@ -14,7 +14,7 @@ struct nakd_module {
 };
 
 #define NAKD_DECLARE_MODULE(desc) \
-    static struct nakd_module *_module_desc_ptr \
+    struct nakd_module * desc ## _ptr \
         __attribute__ ((section (".module"))) = &desc 
 
 void nakd_init_modules(void);

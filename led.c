@@ -160,11 +160,11 @@ static struct led_condition _default = {
     .name = "default",
     .priority = LED_PRIORITY_DEFAULT,
     .states = (struct led_state[]){
-        { "LED1_path", NULL, 1 },
-        { "LED2_path", NULL, 1 },
+        { "LED1_path", NULL, 0 },
+        { "LED2_path", NULL, 0 },
         {}
     },
-    .blink.on = 1,
+    .blink.on = 0,
     .blink.interval = 100,
     .blink.count = -1, /*infinite */
 };

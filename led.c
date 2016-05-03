@@ -45,6 +45,7 @@ void nakd_led_condition_add(struct led_condition *cond) {
 }
 
 static void _led_condition_remove(struct led_condition *cond) {
+    nakd_log(L_DEBUG, "Removing LED condition: %s", cond->name);
     cond->active = 0;
 }
 
@@ -144,14 +145,9 @@ static void _led_sighandler(siginfo_t *timer_info, struct nakd_timer *timer) {
     pthread_mutex_lock(&_led_mutex);
     struct led_condition *next = __choose_condition();
     if (next != NULL) {
-        if (_current_condition == NULL) {
+        if (_current_condition == NULL || !_current_condition->active ||
+                        next->priority > _current_condition->priority) {
             __swap_condition(next);
-        } else {
-            if (next->priority > _current_condition->priority)
-                _led_condition_remove(_current_condition);
-
-            if (!_current_condition->active)
-                __swap_condition(next);
         }
     }
 

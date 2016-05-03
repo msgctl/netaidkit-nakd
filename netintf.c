@@ -13,7 +13,7 @@
 #define NETINTF_UBUS_SERVICE "network.device"
 #define NETINTF_UBUS_METHOD "status"
 
-#define NETINTF_UPDATE_INTERVAL 250 /* ms */
+#define NETINTF_UPDATE_INTERVAL 500 /* ms */
 
 static json_object *_previous_netintf_state = NULL;
 static json_object *_current_netintf_state = NULL;

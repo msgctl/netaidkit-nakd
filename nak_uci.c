@@ -164,6 +164,13 @@ int nakd_uci_option_foreach_pkg(const char *package, const char *option_name,
     return status;
 }
 
+int nakd_uci_set(struct uci_context *ctx, struct uci_ptr *ptr) {
+    pthread_mutex_lock(&_uci_mutex);
+    int status = uci_set(ctx, ptr);
+    pthread_mutex_unlock(&_uci_mutex);
+    return status;
+}
+
 static struct nakd_module module_uci = {
     .name = "uci",
     .deps = NULL,

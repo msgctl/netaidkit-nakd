@@ -154,9 +154,6 @@ static void toggle_rule(const char *hook_name, const char *state,
     nakd_log(L_NOTICE, "%s rule \"%s\"", rule_disable ? "Disabling" :
                                                    "Enabling", name);
 
-    struct uci_option *opt_enabled =
-        uci_lookup_option(ctx, section, "enabled");
-
     const char *value = rule_disable ? "0" : "1";
     struct uci_ptr new_opt_enabled_ptr = {
         .package = option->section->package->e.name,

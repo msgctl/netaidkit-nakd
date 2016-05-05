@@ -3,6 +3,7 @@
 #include <json-c/json.h>
 #include "netintf.h"
 #include "jsonrpc.h"
+#include "json.h"
 #include "ubus.h"
 #include "log.h"
 #include "timer.h"
@@ -77,6 +78,63 @@ struct interface {
     {}
 };
 
+int nakd_update_iface_config(enum nakd_interface id,
+        nakd_uci_option_foreach_cb cb, void *priv) {
+    /* Find interface tag, execute callback. */
+    int tags_found = nakd_uci_option_foreach(
+                  nakd_uci_interface_tag[id],
+                                   cb, priv);
+    if (tags_found < 0) {
+        nakd_log(L_CRIT, "Couldn't read UCI interface tags.");
+    } else if (!tags_found) {
+        nakd_log(L_WARNING, "No UCI \"%s\" interface tags found.",
+                                nakd_uci_interface_tag[id]);
+    } else if (tags_found != 1) {
+        nakd_log(L_WARNING, "Found more than one \"%s\" interface tag, "
+                      "using interface \"%s\".", nakd_uci_interface_tag[
+                                          id], nakd_interface_name(id));
+    } else {
+        nakd_log(L_INFO, "Found \"%s\" interface tag. (intf: %s)",
+                                       nakd_uci_interface_tag[id],
+                                     nakd_uci_interface_name[id]);
+    }
+    return tags_found;
+}
+
+static int _disable_interface(struct uci_option *option, void *priv) {
+    struct interface *intf = priv;
+    struct uci_section *ifs = option->section;
+    struct uci_context *ctx = ifs->package->ctx;
+
+    nakd_assert(ifs != NULL);
+    nakd_assert(ctx != NULL);
+
+    struct uci_ptr disabled_ptr = {
+        .package = ifs->package->e.name,
+        .section = ifs->e.name,
+        .option = "disabled",
+        .value = "1"
+    };
+    nakd_assert(!uci_set(ctx, &disabled_ptr));
+}
+
+int nakd_disable_interface(enum nakd_interface id) {
+    int status = 0;
+
+    nakd_log(L_INFO, "Disabling %s.", nakd_uci_interface_name[id]);
+    pthread_mutex_lock(&_netintf_mutex);
+
+    if (nakd_update_iface_config(id, _disable_interface,
+                                           NULL) != 1) {
+        status = 1;
+        goto unlock;
+    }
+
+unlock:
+    pthread_mutex_unlock(&_netintf_mutex);
+    return status;
+}
+
 static int _read_intf_config(struct uci_option *option, void *priv) {
     struct interface *intf = priv;
     struct uci_section *ifs = option->section;
@@ -93,26 +151,8 @@ static int _read_intf_config(struct uci_option *option, void *priv) {
 
 static void _read_config(void) {
     /* update interface->name with tags found in UCI */
-    for (struct interface *intf = _interfaces; intf->id; intf++) {
-        int tags_found = nakd_uci_option_foreach(
-                nakd_uci_interface_tag[intf->id],
-                        _read_intf_config, intf);
-
-        if (tags_found < 0) {
-            nakd_log(L_CRIT, "Couldn't read UCI interface tags.");
-        } else if (!tags_found) {
-            nakd_log(L_WARNING, "No UCI \"%s\" interface tags found.",
-                                    nakd_uci_interface_tag[intf->id]);
-        } else if (tags_found != 1) {
-            nakd_log(L_WARNING, "Found more than one \"%s\" interface tag, "
-                          "using interface \"%s\".", nakd_uci_interface_tag[
-                                                     intf->id], intf->name);
-        } else {
-            nakd_log(L_INFO, "Found \"%s\" interface tag. (intf: %s)",
-                                     nakd_uci_interface_tag[intf->id],
-                                                          intf->name);
-        }
-    }
+    for (struct interface *intf = _interfaces; intf->id; intf++)
+        nakd_update_iface_config(intf->id, _read_intf_config, intf);
 }
 
 static int __carrier_present(const char *intf) {
@@ -138,6 +178,13 @@ static char *__interface_name(enum nakd_interface id) {
             return intf->name;
     }
     return NULL;
+}
+
+char *nakd_interface_name(enum nakd_interface id) {
+    pthread_mutex_lock(&_netintf_mutex);
+    char *name = __interface_name(id);
+    pthread_mutex_unlock(&_netintf_mutex);
+    return name;
 }
 
 int nakd_carrier_present(enum nakd_interface id) {
@@ -290,7 +337,7 @@ json_object *cmd_interface_state(json_object *jcmd, void *arg) {
         }
 
         json_object_object_add(jresult, nakd_uci_interface_name[intf->id],
-                                                                  jstate);
+                                              nakd_json_deepcopy(jstate));
     }
 
     jresponse = nakd_jsonrpc_response_success(jcmd, jresult);

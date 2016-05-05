@@ -8,6 +8,7 @@
 #include "misc.h"
 #include "openvpn.h"
 #include "netintf.h"
+#include "wlan.h"
 
 static command commands[] = {
 //    { "getapnam", get_ap_name, 0 },
@@ -27,7 +28,10 @@ static command commands[] = {
     CMD_SHELL_NAKD("isportal", "detect_portal.sh"),
     { "stage", cmd_stage, NULL },
     { "openvpn", cmd_openvpn, NULL },
-    { "interface_state", cmd_interface_state, NULL}
+    { "interface_state", cmd_interface_state, NULL},
+    { "wlan_list", cmd_wlan_list, NULL },
+    { "wlan_scan", cmd_wlan_scan, NULL },
+    { "wlan_connect", cmd_wlan_connect, NULL }
 };
 
 command *nakd_get_command(const char *cmd_name) {

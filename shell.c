@@ -117,6 +117,11 @@ char *nakd_do_command_argv(const char **argv, const char *cwd) {
     nakd_log_execution_point();
     log_execve((const char **)(argv));
 
+    if (access(argv[0], X_OK)) {
+        nakd_log(L_CRIT, "The file at %s isn't an executable.", argv[0]);
+        return NULL;
+    }
+
     response = malloc(MAX_SHELL_RESULT_LEN);
     if (response == NULL) {
         nakd_log(L_WARNING, "Couldn't allocate %d bytes for command response",

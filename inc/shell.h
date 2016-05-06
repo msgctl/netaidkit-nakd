@@ -6,7 +6,7 @@
 #define MAX_SHELL_RESULT_LEN 262144
 
 #define NAKD_SCRIPT_PATH "/usr/share/nakd/scripts/"
-#define NAKD_SCRIPT(filename) (NAKD_SCRIPT_PATH filename)
+#define NAKD_SCRIPT(filename) NAKD_SCRIPT_PATH filename
 
 char *nakd_do_command(const char *args, const char *cwd);
 char *nakd_do_command_argv(const char **argv, const char *cwd);

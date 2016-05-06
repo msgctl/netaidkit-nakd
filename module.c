@@ -19,6 +19,8 @@ static struct nakd_module *_module_byname(const char *name) {
 static void _init_module(struct nakd_module *module) {
     module->initialized = 1;
 
+    nakd_log(L_DEBUG, "Initializing module %s.", module->name);
+
     if (module->deps != NULL) {
         for (const char **name = module->deps; *name; name++) {
             struct nakd_module *depm = _module_byname(*name);
@@ -43,6 +45,8 @@ static void _init_module(struct nakd_module *module) {
 static void _cleanup_module(struct nakd_module *module) {
     module->initialized = 0;
 
+    nakd_log(L_DEBUG, "Cleaning up module %s.", module->name);
+
     /* Clean up dependent modules first */
     for (struct nakd_module **depm = __nakd_module_list; *depm; depm++) {
         if (!(*depm)->initialized || (*depm)->deps == NULL)
@@ -58,8 +62,8 @@ static void _cleanup_module(struct nakd_module *module) {
         }
     }
 
-    nakd_log(L_DEBUG, "Cleaning up module: %s", module->name);
     nakd_assert(!module->cleanup());
+    nakd_log(L_DEBUG, "Cleaned up module: %s", module->name);
 }
 
 void nakd_init_modules(void) {

@@ -188,17 +188,22 @@ char *nakd_interface_name(enum nakd_interface id) {
 }
 
 int nakd_carrier_present(enum nakd_interface id) {
+    int status = 1;
+
     pthread_mutex_lock(&_netintf_mutex);
     char *intf_name = __interface_name(id);
     if (intf_name == NULL) {
         nakd_log(L_CRIT, "There's no interface with id %s",
                               nakd_uci_interface_name[id]);
-        return -1;
+        status = -1;
+        goto unlock;
     }
 
-    int carrier = __carrier_present(intf_name);
+    status = __carrier_present(intf_name);
+
+unlock:
     pthread_mutex_unlock(&_netintf_mutex);
-    return carrier;
+    return status;
 }
 
 static void __push_carrier_events(void) {

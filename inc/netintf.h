@@ -19,4 +19,7 @@ int nakd_carrier_present(enum nakd_interface id);
 
 json_object *cmd_interface_state(json_object *jcmd, void *arg);
 
+extern const char *nakd_uci_interface_tag[];
+extern const char *nakd_interface_type[];
+
 #endif

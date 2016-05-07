@@ -29,6 +29,7 @@ static command commands[] = {
     { "stage", cmd_stage, NULL },
     { "openvpn", cmd_openvpn, NULL },
     { "interface_state", cmd_interface_state, NULL},
+    { "wlan_list_stored", cmd_wlan_list_stored, NULL },
     { "wlan_list", cmd_wlan_list, NULL },
     { "wlan_scan", cmd_wlan_scan, NULL },
     { "wlan_connect", cmd_wlan_connect, NULL }

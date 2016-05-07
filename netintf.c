@@ -25,7 +25,7 @@ const char *nakd_uci_interface_tag[] = {
     [NAKD_AP] = "nak_ap_tag"
 };
 
-const char *nakd_uci_interface_name[] = {
+const char *nakd_interface_type[] = {
     [INTF_UNSPECIFIED] "?",
     [NAKD_LAN] = "LAN",
     [NAKD_WAN] = "WAN",
@@ -92,11 +92,11 @@ int nakd_update_iface_config(enum nakd_interface id,
     } else if (tags_found != 1) {
         nakd_log(L_WARNING, "Found more than one \"%s\" interface tag, "
                       "using interface \"%s\".", nakd_uci_interface_tag[
-                                      id], nakd_uci_interface_name[id]);
+                                          id], nakd_interface_type[id]);
     } else {
         nakd_log(L_INFO, "Found \"%s\" interface tag. (intf: %s)",
                                        nakd_uci_interface_tag[id],
-                                     nakd_uci_interface_name[id]);
+                                         nakd_interface_type[id]);
     }
     return tags_found;
 }
@@ -121,7 +121,7 @@ static int _disable_interface(struct uci_option *option, void *priv) {
 int nakd_disable_interface(enum nakd_interface id) {
     int status = 0;
 
-    nakd_log(L_INFO, "Disabling %s.", nakd_uci_interface_name[id]);
+    nakd_log(L_INFO, "Disabling %s.", nakd_interface_type[id]);
     pthread_mutex_lock(&_netintf_mutex);
 
     if (nakd_update_iface_config(id, _disable_interface,
@@ -194,7 +194,7 @@ int nakd_carrier_present(enum nakd_interface id) {
     char *intf_name = __interface_name(id);
     if (intf_name == NULL) {
         nakd_log(L_CRIT, "There's no interface with id %s",
-                              nakd_uci_interface_name[id]);
+                                  nakd_interface_type[id]);
         status = -1;
         goto unlock;
     }
@@ -341,8 +341,8 @@ json_object *cmd_interface_state(json_object *jcmd, void *arg) {
             goto unlock;
         }
 
-        json_object_object_add(jresult, nakd_uci_interface_name[intf->id],
-                                              nakd_json_deepcopy(jstate));
+        json_object_object_add(jresult, nakd_interface_type[intf->id],
+                                          nakd_json_deepcopy(jstate));
     }
 
     jresponse = nakd_jsonrpc_response_success(jcmd, jresult);

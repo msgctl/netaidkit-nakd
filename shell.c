@@ -40,7 +40,7 @@ static char **build_argv_json(const char *path, json_object *params) {
 }
 
 static int _get_argc(const char *args) {
-    int argc = 0;
+    int argc = 1;
     int prev = 0;
 
     for (const char *p = args; *p; p++) {

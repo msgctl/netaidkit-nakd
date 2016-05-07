@@ -169,7 +169,7 @@ static int _run_stage_script(struct stage *stage) {
     snprintf(path, sizeof path, NAKD_STAGE_SCRIPT_FMT, stage->name);
 
     if (access(path, X_OK)) {
-        nakd_log(L_DEBUG, "No executable script at %s, continuing.");
+        nakd_log(L_DEBUG, "No executable script at %s, continuing.", path);
         return 0;
     }
 

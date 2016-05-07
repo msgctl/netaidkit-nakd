@@ -97,7 +97,7 @@ static int _uci_option_foreach_pkg(const char *package, const char *option_name,
     int cb_calls = 0;
     
     uci_pkg = __load_uci_package(package);
-    if (package == NULL)
+    if (uci_pkg == NULL)
         return 1;
 
     /*

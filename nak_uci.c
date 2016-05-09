@@ -111,15 +111,16 @@ static int _uci_option_foreach_pkg(const char *package, const char *option_name,
         if (option == NULL)
             continue;
 
-        if (cb(option, cb_priv))
-            return 1;
-        else
+        if (cb(option, cb_priv)) {
+            cb_calls = -1;
+            goto unload;
+        } else {
             cb_calls++;
+        }
     }
 
-    if (__uci_save(uci_pkg))
-        return -1;
-
+unload:
+    nakd_assert(!__uci_save(uci_pkg));
     /* nakd probably wouldn't recover from these */
     nakd_assert(!__uci_commit(&uci_pkg, true));
     nakd_assert(!__unload_uci_package(uci_pkg));

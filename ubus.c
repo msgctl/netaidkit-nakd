@@ -48,8 +48,9 @@ int nakd_ubus_call(const char *namespace, const char* procedure,
     status = ubus_invoke(ubus_ctx, namespace_id, procedure, ubus_buf.head,
                                           cb, cb_priv, UBUS_CALL_TIMEOUT);
     if (status) {
-        nakd_log(L_CRIT, "ubus call status: %d (%s %s %s)", status,
-                                        namespace, procedure, arg);
+        const char *errstr = ubus_strerror(status);
+        nakd_log(L_WARNING, "ubus call status: %d - %s (%s %s %s)", status,
+                                        errstr, namespace, procedure, arg);
     }
 unlock:
     pthread_mutex_unlock(&_ubus_mutex);

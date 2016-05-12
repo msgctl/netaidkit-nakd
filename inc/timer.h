@@ -1,5 +1,6 @@
 #ifndef NAKD_TIMER_H
 #define NAKD_TIMER_H
+#include <signal.h>
 
 struct nakd_timer;
 typedef void (*nakd_timer_handler)(siginfo_t *timer_info,

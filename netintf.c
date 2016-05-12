@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <json-c/json.h>
@@ -135,6 +136,38 @@ unlock:
     return status;
 }
 
+static int _interface_disabled(struct uci_option *option, void *priv) {
+    struct interface *intf = priv;
+    struct uci_section *ifs = option->section;
+    struct uci_context *ctx = ifs->package->ctx;
+
+    nakd_assert(ifs != NULL);
+    nakd_assert(ctx != NULL);
+
+    const char *disabled = uci_lookup_option_string(ctx, ifs, "disabled");
+    if (disabled == NULL) {
+        *(int *)(priv) = 0; /* default */
+        return 0;
+    }
+
+    *(int *)(priv) = atoi(disabled);
+    return 0;
+}
+
+int nakd_interface_disabled(enum nakd_interface id) {
+    int status;
+    pthread_mutex_lock(&_netintf_mutex);
+    if (nakd_update_iface_config(id, _disable_interface,
+                                        &status) != 1) {
+        status = -1;
+        goto unlock;
+    }
+
+unlock:
+    pthread_mutex_unlock(&_netintf_mutex);
+    return status;
+}
+
 static int _read_intf_config(struct uci_option *option, void *priv) {
     struct interface *intf = priv;
     struct uci_section *ifs = option->section;
@@ -204,6 +237,13 @@ int nakd_carrier_present(enum nakd_interface id) {
 unlock:
     pthread_mutex_unlock(&_netintf_mutex);
     return status;
+}
+
+int nakd_iface_state_available(void) {
+    pthread_mutex_lock(&_netintf_mutex);
+    int s = _current_netintf_state != NULL;
+    pthread_mutex_unlock(&_netintf_mutex);
+    return s;
 }
 
 static void __push_carrier_events(void) {
@@ -297,10 +337,14 @@ cleanup:
     json_tokener_free(jtok);
 }
 
-static void _netintf_update_sighandler(siginfo_t *timer_info,
-                                  struct nakd_timer *timer) {
+static void _netintf_update(void) {
     nakd_ubus_call(NETINTF_UBUS_SERVICE, NETINTF_UBUS_METHOD, "{}", /* all */
                                          _netintf_update_cb, NULL);
+}
+
+static void _netintf_update_sighandler(siginfo_t *timer_info,
+                                  struct nakd_timer *timer) {
+    _netintf_update();
 }
 
 static int _netintf_init(void) {

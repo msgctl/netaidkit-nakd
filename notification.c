@@ -20,7 +20,7 @@ static struct led_condition _led_cable_plugged = {
 };
 
 static struct led_condition _led_cable_removed = {
-    .name = "Ethernet plugged",
+    .name = "Ethernet unplugged",
     .priority = LED_PRIORITY_NOTIFICATION,
     .states = (struct led_state[]){
         { "LED1_path", NULL, 0 },
@@ -48,16 +48,16 @@ static struct led_condition _led_traffic = {
 };
 
 static struct led_condition _connectivity_lost = {
-    .name = "Network traffic",
-    .priority = LED_PRIORITY_NOTIFICATION,
+    .name = "Connectivity lost",
+    .priority = LED_PRIORITY_ACTION_NEEDED,
     .states = (struct led_state[]){
         { "LED1_path", NULL, 1 },
         { "LED2_path", NULL, 1 },
         {}
     },
     .blink.on = 1,
-    .blink.interval = 50,
-    .blink.count = 1,
+    .blink.interval = 100,
+    .blink.count = -1,
     .blink.state = 1
 };
 

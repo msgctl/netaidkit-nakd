@@ -80,7 +80,7 @@ static int __save_stored_networks(void) {
     return 0;
 }
 
-static const char *_get_key(json_object *jnetwork) {
+const char *nakd_net_key(json_object *jnetwork) {
     json_object *jkey = NULL;
     json_object_object_get_ex(jnetwork, "key", &jkey);
     if (jkey == NULL || json_object_get_type(jkey) != json_type_string)
@@ -89,7 +89,7 @@ static const char *_get_key(json_object *jnetwork) {
     return json_object_get_string(jkey);
 }
 
-static const char *_get_ssid(json_object *jnetwork) {
+const char *nakd_net_ssid(json_object *jnetwork) {
     json_object *jssid = NULL;
     json_object_object_get_ex(jnetwork, "ssid", &jssid);
     if (jssid == NULL || json_object_get_type(jssid) != json_type_string)
@@ -103,7 +103,7 @@ static json_object *__get_stored_network(const char *ssid) {
 
     for (int i = 0; i < json_object_array_length(_stored_networks); i++) {
         json_object *jnetwork = json_object_array_get_idx(_stored_networks, i);
-        const char *stored_ssid = _get_ssid(jnetwork);
+        const char *stored_ssid = nakd_net_ssid(jnetwork);
 
         if (stored_ssid == NULL) { 
             nakd_log(L_WARNING, "Malformed configuration file: " WLAN_NETWORK_LIST_PATH);
@@ -127,7 +127,7 @@ static void __remove_stored_network(const char *ssid) {
 
     for (int i = 0; i < json_object_array_length(_stored_networks); i++) {
         json_object *jnetwork = json_object_array_get_idx(_stored_networks, i);
-        const char *stored_ssid = _get_ssid(jnetwork);
+        const char *stored_ssid = nakd_net_ssid(jnetwork);
 
         if (stored_ssid == NULL) { 
             nakd_log(L_WARNING, "Malformed configuration file: " WLAN_NETWORK_LIST_PATH);
@@ -149,7 +149,7 @@ static void __remove_stored_network(const char *ssid) {
 }
 
 static json_object *_create_network_entry(json_object *jnetwork, const char *key) {
-    const char *ssid = _get_ssid(jnetwork);
+    const char *ssid = nakd_net_ssid(jnetwork);
     nakd_assert(ssid != NULL);
     json_object *jssid = json_object_new_string(ssid);
     json_object *jkey = json_object_new_string(key);
@@ -161,7 +161,7 @@ static json_object *_create_network_entry(json_object *jnetwork, const char *key
 }
 
 static int __store_network(json_object *jnetwork, const char *key) {
-    const char *ssid = _get_ssid(jnetwork);
+    const char *ssid = nakd_net_ssid(jnetwork);
     if (__get_stored_network(ssid) != NULL)
         __remove_stored_network(ssid);
 
@@ -182,7 +182,7 @@ static int __in_range(const char *ssid) {
     for (int i = 0; i < json_object_array_length(_wireless_networks); i++) {
         json_object *jnetwork = json_object_array_get_idx(_wireless_networks, i);
 
-        const char *iter_ssid = _get_ssid(jnetwork);
+        const char *iter_ssid = nakd_net_ssid(jnetwork);
         nakd_assert(iter_ssid != NULL);
 
         if (!strcmp(iter_ssid, ssid))
@@ -198,7 +198,7 @@ static json_object *__choose_network(void) {
     for (int i = 0; i < json_object_array_length(_wireless_networks); i++) {
         json_object *jnetwork = json_object_array_get_idx(_wireless_networks, i);
 
-        const char *ssid = _get_ssid(jnetwork);
+        const char *ssid = nakd_net_ssid(jnetwork);
         nakd_assert(ssid != NULL);
 
         json_object *jstored = __get_stored_network(ssid);
@@ -212,6 +212,14 @@ json_object *nakd_wlan_candidate(void) {
     pthread_mutex_lock(&_wlan_mutex);
     json_object *jnetwork = __choose_network();
     pthread_mutex_unlock(&_wlan_mutex);
+    return jnetwork;
+}
+
+int nakd_wlan_netcount(void) {
+    pthread_mutex_lock(&_wlan_mutex);
+    int count = json_object_array_length(_wireless_networks);
+    pthread_mutex_unlock(&_wlan_mutex);
+    return count;
 }
 
 static void _wlan_update_cb(struct ubus_request *req, int type,
@@ -245,7 +253,7 @@ static void _wlan_update_cb(struct ubus_request *req, int type,
     pthread_mutex_unlock(&_wlan_mutex);
 
     nakd_log(L_INFO, "Updated wireless network list. Available networks: %d",
-                               json_object_array_length(_wireless_networks));
+                                                       nakd_wlan_netcount());
     goto cleanup;
 
 badmsg:
@@ -284,7 +292,7 @@ static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
     const char *pkg_name = pkg->e.name;
     const char *section_name = ifs->e.name;
 
-    const char *ssid = _get_ssid(jnetwork);
+    const char *ssid = nakd_net_ssid(jnetwork);
     struct uci_ptr ssid_ptr = {
         .package = pkg_name,
         .section = section_name,
@@ -294,7 +302,7 @@ static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
     /* this function is called from nakd_uci_, no locking required for uci_set */
     nakd_assert(!uci_set(ctx, &ssid_ptr));
 
-    const char *key = _get_key(jnetwork);
+    const char *key = nakd_net_key(jnetwork);
     struct uci_ptr key_ptr = {
         .package = pkg_name,
         .section = section_name,
@@ -336,8 +344,8 @@ static int _reload_wireless_config(void) {
 }
 
 static int _wlan_connect(json_object *jnetwork) {
-    const char *ssid = _get_ssid(jnetwork);
-    const char *key = _get_key(jnetwork);
+    const char *ssid = nakd_net_ssid(jnetwork);
+    const char *key = nakd_net_key(jnetwork);
     if (ssid == NULL || key == NULL)
         return 1;
 
@@ -463,7 +471,7 @@ json_object *cmd_wlan_scan(json_object *jcmd, void *arg) {
         return jresponse;
     }
 
-    int netcount = json_object_array_length(_wireless_networks);
+    int netcount = nakd_wlan_netcount();
 
     json_object *jresult = json_object_new_object();
     json_object *jnetcount = json_object_new_int(netcount);
@@ -490,8 +498,8 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
         goto params;
     }
 
-    const char *ssid = _get_ssid(jparams);
-    const char *key = _get_key(jparams);
+    const char *ssid = nakd_net_ssid(jparams);
+    const char *key = nakd_net_key(jparams);
     if (ssid == NULL || key == NULL)
         goto params;
 

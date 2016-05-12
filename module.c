@@ -67,11 +67,19 @@ static void _cleanup_module(struct nakd_module *module) {
 }
 
 void nakd_init_modules(void) {
-    for (struct nakd_module **module = __nakd_module_list; *module; module++)
+    for (struct nakd_module **module = __nakd_module_list; *module; module++) {
+        if ((*module)->initialized)
+            continue;
+
         _init_module(*module);
+    }
 }
 
 void nakd_cleanup_modules(void) {
-    for (struct nakd_module **module = __nakd_module_list; *module; module++)
+    for (struct nakd_module **module = __nakd_module_list; *module; module++) {
+        if (!(*module)->initialized)
+            return;
+
         _cleanup_module(*module);
+    }
 }

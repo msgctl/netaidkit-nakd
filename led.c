@@ -53,7 +53,9 @@ void nakd_led_condition_remove(const char *name) {
     pthread_mutex_lock(&_led_mutex);
     for (struct led_condition *cond = _led_conditions;
           cond < ARRAY_END(_led_conditions); cond++) {
-        if (!strstr(name, cond->name))
+        if (!cond->active)
+            continue;
+        if (!strcmp(name, cond->name))
             _led_condition_remove(cond);
     }
     pthread_mutex_unlock(&_led_mutex);

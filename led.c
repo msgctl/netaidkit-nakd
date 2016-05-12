@@ -32,8 +32,22 @@ static struct led_condition *__get_condition_slot(void) {
     return cond;
 }
 
+static int _led_condition_active(const char *name) {
+    for (struct led_condition *cond = _led_conditions;
+          cond < ARRAY_END(_led_conditions); cond++) {
+        if (!cond->active)
+            continue;
+        if (!strcmp(name, cond->name))
+            return 1;
+    }
+    return 0;
+}
+
 void nakd_led_condition_add(struct led_condition *cond) {
     pthread_mutex_lock(&_led_mutex);
+    if (_led_condition_active(cond->name))
+        return;
+
     struct led_condition *_cond = __get_condition_slot();
     if (_cond == NULL) {
         nakd_log(L_CRIT, "Out of LED condition slots.");

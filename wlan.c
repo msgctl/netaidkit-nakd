@@ -45,7 +45,7 @@ static int __read_stored_networks(void) {
     /* TODO write nakd_json_parse_file, parse 4096b chunks. */
     const size_t networks_buffer_size = 262144;
     char *networks_buffer = malloc(networks_buffer_size);
-    size_t size = fread(networks_buffer, networks_buffer_size - 1, 1, fp);
+    size_t size = fread(networks_buffer, 1, networks_buffer_size - 1, fp);
     networks_buffer[size] = 0;
 
     json_tokener *jtok = json_tokener_new();

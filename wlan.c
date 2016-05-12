@@ -63,6 +63,9 @@ static void __init_stored_networks(void) {
     if (__read_stored_networks()) {
             _stored_networks = json_object_new_array();
     }
+
+    nakd_log(L_INFO, "Read %d known networks.",
+        json_object_array_length(_stored_networks)); 
 }
 
 static void __cleanup_stored_networks(void) {

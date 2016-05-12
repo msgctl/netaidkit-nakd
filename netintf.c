@@ -15,7 +15,7 @@
 #define NETINTF_UBUS_SERVICE "network.device"
 #define NETINTF_UBUS_METHOD "status"
 
-#define NETINTF_UPDATE_INTERVAL 500 /* ms */
+#define NETINTF_UPDATE_INTERVAL 2000 /* ms */
 
 /* eg. "option nak_lan_tag 1" for wired lan interface */
 const char *nakd_uci_interface_tag[] = {

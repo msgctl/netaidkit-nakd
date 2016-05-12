@@ -9,7 +9,7 @@
 #include "thread.h"
 #include "module.h"
 
-#define CONNECTIVITY_UPDATE_INTERVAL 10000 /* ms */
+#define CONNECTIVITY_UPDATE_INTERVAL 20000 /* ms */
 
 static pthread_mutex_t _connectivity_mutex;
 static struct nakd_timer *_connectivity_update_timer;
@@ -70,7 +70,6 @@ static void _connectivity_loop(struct nakd_thread *thread) {
         _connectivity_update();
     }
     pthread_mutex_unlock(&_connectivity_mutex);
-
 }
 
 static void _connectivity_shutdown_cb(struct nakd_thread *thread) {

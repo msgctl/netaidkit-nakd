@@ -22,7 +22,9 @@ static int _uci_cleanup(void) {
 static struct uci_package *__load_uci_package(const char *name) {
     struct uci_package *pkg = NULL;
 
-    nakd_log(L_INFO, "Loading UCI package \"%s\"", name);
+    /*
+     * nakd_log(L_INFO, "Loading UCI package \"%s\"", name);
+     */
     nakd_assert(name != NULL);
     
     if (uci_load(_uci_ctx, name, &pkg)) {
@@ -52,7 +54,9 @@ struct uci_option *nakd_uci_option_single(const char *option_name) {
 }
 
 static int __uci_save(struct uci_package *pkg) {
-    nakd_log(L_INFO, "Saving UCI package \"%s\"", pkg->e.name);
+    /*
+     * nakd_log(L_INFO, "Saving UCI package \"%s\"", pkg->e.name);
+     */
     return uci_save(_uci_ctx, pkg);
 }
 
@@ -64,7 +68,9 @@ int nakd_uci_save(struct uci_package *pkg) {
 }
 
 static int __uci_commit(struct uci_package **pkg, bool overwrite) {
-    nakd_log(L_DEBUG, "Commiting changes to UCI package \"%s\"", (*pkg)->e.name);
+    /*
+     * nakd_log(L_DEBUG, "Commiting changes to UCI package \"%s\"", (*pkg)->e.name);
+     */
     return uci_commit(_uci_ctx, pkg, overwrite);
 }
 
@@ -76,7 +82,9 @@ int nakd_uci_commit(struct uci_package **pkg, bool overwrite) {
 }
 
 static int __unload_uci_package(struct uci_package *pkg) {
-    nakd_log(L_DEBUG, "Unloading UCI package \"%s\"", pkg->e.name);
+    /*
+     * nakd_log(L_DEBUG, "Unloading UCI package \"%s\"", pkg->e.name);
+     */
     return uci_unload(_uci_ctx, pkg);
 }
 

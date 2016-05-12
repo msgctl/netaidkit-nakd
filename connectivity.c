@@ -30,8 +30,14 @@ static void _connectivity_update(void) {
     if (_ethernet_wan_available() != 0)
         return; /* skip if either present or don't know yet */
 
-    if (!nakd_interface_disabled(NAKD_WLAN))
-        return; /* skip if there's already a wifi connection */
+    int wan_disabled = nakd_interface_disabled(NAKD_WLAN);
+    if (wan_disabled == -1) {
+        nakd_log(L_CRIT, "Can't query WLAN interface UCI configuration.");
+        return;
+    } else if (!wan_disabled) {
+        /* skip if there's already a wifi connection */
+        return;
+    }
 
     nakd_log(L_INFO, "No Ethernet or wireless connection, looking for WLAN"
                                                             " candidate.");

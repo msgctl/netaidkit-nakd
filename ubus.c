@@ -5,7 +5,7 @@
 #include "log.h"
 #include "module.h"
 
-#define UBUS_CALL_TIMEOUT 15 * 1000
+#define UBUS_CALL_TIMEOUT 5 * 1000
 
 static struct ubus_context *ubus_ctx = NULL;
 static struct blob_buf ubus_buf;
@@ -45,6 +45,7 @@ int nakd_ubus_call(const char *namespace, const char* procedure,
     if (status)
         goto unlock;
 
+    nakd_log(L_DEBUG, "ubus call: %s %s %s", namespace, procedure, arg);
     status = ubus_invoke(ubus_ctx, namespace_id, procedure, ubus_buf.head,
                                           cb, cb_priv, UBUS_CALL_TIMEOUT);
     if (status) {
@@ -53,6 +54,7 @@ int nakd_ubus_call(const char *namespace, const char* procedure,
                                         errstr, namespace, procedure, arg);
     }
 unlock:
+    nakd_log(L_CRIT, "Couldn't lookup ubus id (%s %s %s)", namespace, procedure, arg);
     pthread_mutex_unlock(&_ubus_mutex);
     return status;
 }

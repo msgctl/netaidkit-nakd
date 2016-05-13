@@ -63,9 +63,8 @@ struct nakd_timer *nakd_timer_add(int interval_ms, nakd_timer_handler handler,
     struct itimerspec its;
     memset(&its, 0, sizeof(struct itimerspec));
 
-    const int interval_ns = interval_ms * 1e6;
-    its.it_value.tv_sec = interval_ns / 1e9;
-    its.it_value.tv_nsec = interval_ns % (int)(1e9);
+    its.it_value.tv_sec = interval_ms / (int)(1e3);
+    its.it_value.tv_nsec = interval_ms % (int)(1e3) * (int)(1e6);
     its.it_interval.tv_sec = its.it_value.tv_sec;
     its.it_interval.tv_nsec = its.it_value.tv_nsec;
 

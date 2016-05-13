@@ -194,6 +194,13 @@ static int __in_range(const char *ssid) {
     return 0;
 }
 
+int nakd_wlan_in_range(const char *ssid) {
+    pthread_mutex_lock(&_wlan_mutex);
+    int s = __in_range(ssid);
+    pthread_mutex_unlock(&_wlan_mutex);
+    return s;
+}
+
 static json_object *__choose_network(void) {
     if (_wireless_networks == NULL)
         return NULL;
@@ -346,6 +353,23 @@ static int _reload_wireless_config(void) {
     return 0;
 }
 
+static void __swap_current_network(json_object *jnetwork) {
+    if (_current_network != NULL)
+        json_object_put(_current_network);
+    if (jnetwork != NULL)
+        json_object_get(jnetwork);
+    _current_network = jnetwork;
+}
+
+json_object *nakd_wlan_current(void) {
+    pthread_mutex_lock(&_wlan_mutex);
+    if (_current_network != NULL)
+        json_object_get(_current_network);
+    json_object *jnetwork = _current_network;
+    pthread_mutex_unlock(&_wlan_mutex);
+    return jnetwork;
+}
+
 static int _wlan_connect(json_object *jnetwork) {
     const char *ssid = nakd_net_ssid(jnetwork);
     const char *key = nakd_net_key(jnetwork);
@@ -374,6 +398,7 @@ static int _wlan_connect(json_object *jnetwork) {
         return 1;
     }
 
+    __swap_current_network(jnetwork);
     return _reload_wireless_config();
 }
 
@@ -395,6 +420,7 @@ int nakd_wlan_disconnect(void) {
         goto unlock;
     }
 
+    __swap_current_network(NULL);
     status = _reload_wireless_config();
 
 unlock:

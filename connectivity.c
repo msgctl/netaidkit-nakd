@@ -9,7 +9,7 @@
 #include "module.h"
 #include "workqueue.h"
 
-#define CONNECTIVITY_UPDATE_INTERVAL 20000 /* ms */
+#define CONNECTIVITY_UPDATE_INTERVAL 10000 /* ms */
 
 static pthread_mutex_t _connectivity_mutex;
 static struct nakd_timer *_connectivity_update_timer;
@@ -28,29 +28,38 @@ static void _connectivity_update(void *priv) {
     if (_ethernet_wan_available() != 0)
         goto unlock; /* skip if either present or don't know yet */
 
+    nakd_wlan_scan();
+    json_object *jcurrent = nakd_wlan_current();
+    const char *current_ssid = NULL;
+    if (jcurrent != NULL)
+        current_ssid = nakd_net_ssid(jcurrent);
+
     int wan_disabled = nakd_interface_disabled(NAKD_WLAN);
     if (wan_disabled == -1) {
         nakd_log(L_CRIT, "Can't query WLAN interface UCI configuration.");
         goto unlock;
     } else if (!wan_disabled) {
-        /* skip if there's already a wifi connection */
-        goto unlock;
+        /* check if the network is still in range */
+        if (current_ssid == NULL || !nakd_wlan_in_range(current_ssid)) {
+            nakd_log(L_INFO, "\"%s\" WLAN is no longer in range.",
+                                                    current_ssid);
+            nakd_wlan_disconnect();
+            nakd_event_push(CONNECTIVITY_LOST);
+        } else {
+            nakd_log(L_INFO, "\"%s\" WLAN is still in range.",
+                                                current_ssid);
+            goto unlock;
+        }
     }
 
     nakd_log(L_INFO, "No Ethernet or wireless connection, looking for WLAN"
                                                             " candidate.");
-
     json_object *jnetwork = nakd_wlan_candidate();
     if (jnetwork == NULL) {
-        /* if there's no candidate, rescan */
-        nakd_wlan_scan();
-        /* retry */
-        jnetwork = nakd_wlan_candidate();
-        if (jnetwork == NULL) {
-            nakd_log(L_INFO, "No available wireless networks");
-            nakd_event_push(CONNECTIVITY_LOST);
-            goto unlock;
-        }
+        nakd_log(L_INFO, "No available wireless networks");
+        nakd_wlan_disconnect();
+        nakd_event_push(CONNECTIVITY_LOST);
+        goto unlock;
     } 
 
     const char *ssid = nakd_net_ssid(jnetwork);
@@ -64,21 +73,23 @@ unlock:
     pthread_mutex_unlock(&_connectivity_mutex);
 }
 
+static struct work _update = {
+    .impl = _connectivity_update,
+    .name = "connectivity update"
+};
+
 static void _connectivity_update_sighandler(siginfo_t *timer_info,
                                        struct nakd_timer *timer) {
-    struct work update = {
-        .impl = _connectivity_update,
-        .name = "connectivity update"
-    };
     /* skip, if there's already a pending update in the workqueue */
-    if (nakd_workqueue_lookup(nakd_wq, update.name) == NULL)
-        nakd_workqueue_add(nakd_wq, &update);
+    if (nakd_workqueue_lookup(nakd_wq, _update.name) == NULL)
+        nakd_workqueue_add(nakd_wq, &_update);
 }
 
 static int _connectivity_init(void) {
     pthread_mutex_init(&_connectivity_mutex, NULL);
     _connectivity_update_timer = nakd_timer_add(CONNECTIVITY_UPDATE_INTERVAL,
                                       _connectivity_update_sighandler, NULL);
+    nakd_workqueue_add(nakd_wq, &_update);
     return 0;
 }
 

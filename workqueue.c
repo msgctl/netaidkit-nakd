@@ -181,20 +181,40 @@ void nakd_workqueue_add(struct workqueue *wq, struct work *work) {
     pthread_mutex_unlock(&wq->lock);
 }
 
-struct work *nakd_workqueue_lookup(struct workqueue *wq, const char *name) {
+int nakd_work_pending(struct workqueue *wq, const char *name) {
+    int s = 0;
     pthread_mutex_lock(&wq->lock);
+
+    /* check queue */
     struct work *work = wq->work;
     while (work != NULL) {
-        if (!strcmp(name, work->name))
-            goto unlock;
+        if (!strcmp(name, work->name)) {
+            s = 1;
+            goto unlock_wq;
+        }
         work = work->next;
     }
 
-    work = NULL;
+    /* check already dequeued */
+    pthread_mutex_lock(&_status_lock);
+    for (struct nakd_thread **thr = wq->threads;
+            thr < wq->threads + wq->threadcount;
+                                        thr++) {
+        struct worker_thread_priv *priv = (*thr)->priv;
+        if (priv->current == NULL)
+            continue;
 
-unlock:
+        if (!strcmp(name, priv->current->name)) {
+            s = 1;
+            goto unlock_workers;
+        }
+    }
+
+unlock_workers:
+    pthread_mutex_unlock(&_status_lock);
+unlock_wq:
     pthread_mutex_unlock(&wq->lock);
-    return work;
+    return s;
 }
 
 static int _workqueue_init(void) {

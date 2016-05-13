@@ -352,7 +352,7 @@ static void _netintf_update_sighandler(siginfo_t *timer_info,
         .name = "netintf update"
     };
     /* skip, if there's already a pending update in the workqueue */
-    if (nakd_workqueue_lookup(nakd_wq, update.name) == NULL)
+    if (!nakd_work_pending(nakd_wq, update.name))
         nakd_workqueue_add(nakd_wq, &update);
 }
 

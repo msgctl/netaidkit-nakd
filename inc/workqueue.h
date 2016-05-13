@@ -22,7 +22,6 @@ struct work {
 struct workqueue {
     pthread_mutex_t lock; 
     struct work *work;
-    int size;
 
     struct nakd_thread **threads;
     int threadcount;
@@ -36,7 +35,7 @@ struct workqueue {
 void nakd_workqueue_create(struct workqueue **wq, int threads, int timeout);
 void nakd_workqueue_destroy(struct workqueue **wq);
 void nakd_workqueue_add(struct workqueue *wq, struct work *work);
-struct work *nakd_workqueue_lookup(struct workqueue *wq, const char *name);
+int nakd_work_pending(struct workqueue *wq, const char *name);
 
 extern struct workqueue *nakd_wq;
 

@@ -81,7 +81,7 @@ static struct work _update = {
 static void _connectivity_update_sighandler(siginfo_t *timer_info,
                                        struct nakd_timer *timer) {
     /* skip, if there's already a pending update in the workqueue */
-    if (nakd_workqueue_lookup(nakd_wq, _update.name) == NULL)
+    if (!nakd_work_pending(nakd_wq, _update.name))
         nakd_workqueue_add(nakd_wq, &_update);
 }
 

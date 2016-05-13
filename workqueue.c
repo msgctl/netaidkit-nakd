@@ -114,8 +114,10 @@ static void _workqueue_loop(struct nakd_thread *thr) {
 
         work->impl(work->priv);
 
+        time_t now = time(NULL);
         if (work->name != NULL)
-            nakd_log(L_DEBUG, "workqueue: finished \"%s\"", work->name);
+            nakd_log(L_DEBUG, "workqueue: finished \"%s\", took %ds",
+                                 work->name, now - work->start_time);
 
         pthread_mutex_lock(&_status_lock);
         priv->current = NULL;

@@ -13,8 +13,7 @@ struct work {
     nakd_work_func impl;
     void *priv;   
 
-    /* debug */
-    const char *desc;
+    const char *name;
     time_t start_time;
 
     struct work *next;
@@ -37,6 +36,7 @@ struct workqueue {
 void nakd_workqueue_create(struct workqueue **wq, int threads, int timeout);
 void nakd_workqueue_destroy(struct workqueue **wq);
 void nakd_workqueue_add(struct workqueue *wq, struct work *work);
+struct work *nakd_workqueue_lookup(struct workqueue *wq, const char *name);
 
 extern struct workqueue *nakd_wq;
 

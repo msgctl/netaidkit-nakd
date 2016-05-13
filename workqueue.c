@@ -2,6 +2,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <signal.h>
+#include <string.h>
 #include "workqueue.h"
 #include "thread.h"
 #include "misc.h"
@@ -38,7 +39,7 @@ static void __check_timeout(void) {
 
             if (processing_time > priv->wq->timeout) {
                 nakd_log(L_WARNING, "workqueue: \"%s\" is taking too much time: %ds",
-                                               priv->current->desc, processing_time);
+                                               priv->current->name, processing_time);
             }
         }
     }
@@ -103,8 +104,8 @@ static void _workqueue_loop(struct nakd_thread *thr) {
         if (work == NULL)
             continue;
 
-        if (work->desc != NULL)
-            nakd_log(L_DEBUG, "workqueue: processing \"%s\"", work->desc);
+        if (work->name != NULL)
+            nakd_log(L_DEBUG, "workqueue: processing \"%s\"", work->name);
 
         pthread_mutex_lock(&_status_lock);
         work->start_time = time(NULL);
@@ -113,8 +114,8 @@ static void _workqueue_loop(struct nakd_thread *thr) {
 
         work->impl(work->priv);
 
-        if (work->desc != NULL)
-            nakd_log(L_DEBUG, "workqueue: finished \"%s\"", work->desc);
+        if (work->name != NULL)
+            nakd_log(L_DEBUG, "workqueue: finished \"%s\"", work->name);
 
         pthread_mutex_lock(&_status_lock);
         priv->current = NULL;
@@ -176,6 +177,22 @@ void nakd_workqueue_add(struct workqueue *wq, struct work *work) {
     *new = *work;
     pthread_cond_signal(&wq->cv);
     pthread_mutex_unlock(&wq->lock);
+}
+
+struct work *nakd_workqueue_lookup(struct workqueue *wq, const char *name) {
+    pthread_mutex_lock(&wq->lock);
+    struct work *work = wq->work;
+    while (work != NULL) {
+        if (!strcmp(name, work->name))
+            goto unlock;
+        work = work->next;
+    }
+
+    work = NULL;
+
+unlock:
+    pthread_mutex_unlock(&wq->lock);
+    return work;
 }
 
 static int _workqueue_init(void) {

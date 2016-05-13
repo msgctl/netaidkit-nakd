@@ -68,9 +68,11 @@ static void _connectivity_update_sighandler(siginfo_t *timer_info,
                                        struct nakd_timer *timer) {
     struct work update = {
         .impl = _connectivity_update,
-        .desc = "connectivity update"
+        .name = "connectivity update"
     };
-    nakd_workqueue_add(nakd_wq, &update);
+    /* skip, if there's already a pending update in the workqueue */
+    if (nakd_workqueue_lookup(nakd_wq, update.name) == NULL)
+        nakd_workqueue_add(nakd_wq, &update);
 }
 
 static int _connectivity_init(void) {

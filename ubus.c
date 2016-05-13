@@ -42,8 +42,12 @@ int nakd_ubus_call(const char *namespace, const char* procedure,
 
     int namespace_id;
     status = ubus_lookup_id(ubus_ctx, namespace, &namespace_id);
-    if (status)
+    if (status) {
+        const char *errstr = ubus_strerror(status);
+        nakd_log(L_WARNING, "ubus lookup status: %d - %s (%s %s %s)", status,
+                                          errstr, namespace, procedure, arg);
         goto unlock;
+    }
 
     nakd_log(L_DEBUG, "ubus call: %s %s %s", namespace, procedure, arg);
     status = ubus_invoke(ubus_ctx, namespace_id, procedure, ubus_buf.head,
@@ -54,7 +58,6 @@ int nakd_ubus_call(const char *namespace, const char* procedure,
                                         errstr, namespace, procedure, arg);
     }
 unlock:
-    nakd_log(L_CRIT, "Couldn't lookup ubus id (%s %s %s)", namespace, procedure, arg);
     pthread_mutex_unlock(&_ubus_mutex);
     return status;
 }

@@ -46,15 +46,17 @@ static int _led_condition_active(const char *name) {
 void nakd_led_condition_add(struct led_condition *cond) {
     pthread_mutex_lock(&_led_mutex);
     if (_led_condition_active(cond->name))
-        return;
+        goto unlock;
 
     struct led_condition *_cond = __get_condition_slot();
     if (_cond == NULL) {
         nakd_log(L_CRIT, "Out of LED condition slots.");
-        return;
+        goto unlock;
     }
     *_cond = *cond;
     _cond->active = 1;
+
+unlock:
     pthread_mutex_unlock(&_led_mutex);
 }
 

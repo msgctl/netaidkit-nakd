@@ -56,7 +56,7 @@ static struct led_condition _connectivity_lost = {
         {}
     },
     .blink.on = 1,
-    .blink.interval = 100,
+    .blink.interval = 1000,
     .blink.count = -1,
     .blink.state = 1
 };

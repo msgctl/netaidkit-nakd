@@ -6,16 +6,13 @@
 #include "netintf.h"
 #include "wlan.h"
 #include "log.h"
-#include "thread.h"
 #include "module.h"
+#include "workqueue.h"
 
 #define CONNECTIVITY_UPDATE_INTERVAL 20000 /* ms */
 
 static pthread_mutex_t _connectivity_mutex;
 static struct nakd_timer *_connectivity_update_timer;
-static struct nakd_thread *_connectivity_thread;
-static pthread_cond_t _connectivity_cv;
-static int _connectivity_shutdown;
 
 static int _ethernet_wan_available(void) {
     if (!nakd_iface_state_available())
@@ -25,18 +22,19 @@ static int _ethernet_wan_available(void) {
     return 0;
 }
 
-static void _connectivity_update(void) {
+static void _connectivity_update(void *priv) {
+    pthread_mutex_lock(&_connectivity_mutex);
     /* prefer ethernet */
     if (_ethernet_wan_available() != 0)
-        return; /* skip if either present or don't know yet */
+        goto unlock; /* skip if either present or don't know yet */
 
     int wan_disabled = nakd_interface_disabled(NAKD_WLAN);
     if (wan_disabled == -1) {
         nakd_log(L_CRIT, "Can't query WLAN interface UCI configuration.");
-        return;
+        goto unlock;
     } else if (!wan_disabled) {
         /* skip if there's already a wifi connection */
-        return;
+        goto unlock;
     }
 
     nakd_log(L_INFO, "No Ethernet or wireless connection, looking for WLAN"
@@ -51,7 +49,7 @@ static void _connectivity_update(void) {
         if (jnetwork == NULL) {
             nakd_log(L_INFO, "No available wireless networks");
             nakd_event_push(CONNECTIVITY_LOST);
-            return;
+            goto unlock;
         }
     } 
 
@@ -61,59 +59,36 @@ static void _connectivity_update(void) {
         nakd_log(L_INFO, "Wireless connection configured, ssid: \"%s\"", ssid);
         nakd_event_push(CONNECTIVITY_OK);
     }
+
+unlock:
+    pthread_mutex_unlock(&_connectivity_mutex);
 }
 
 static void _connectivity_update_sighandler(siginfo_t *timer_info,
                                        struct nakd_timer *timer) {
-    /* this might take some time */
-    pthread_cond_signal(&_connectivity_cv);
-}
-
-static void _connectivity_loop(struct nakd_thread *thread) {
-    pthread_mutex_lock(&_connectivity_mutex);
-    while (!_connectivity_shutdown) {
-        pthread_cond_wait(&_connectivity_cv, &_connectivity_mutex);
-        _connectivity_update();
-    }
-    pthread_mutex_unlock(&_connectivity_mutex);
-}
-
-static void _connectivity_shutdown_cb(struct nakd_thread *thread) {
-    _connectivity_shutdown = 1;
-}
-
-static int _create_connectivity_thread(void) {
-    /* TODO workqueue */
-    nakd_log(L_DEBUG, "Creating connectivity thread.");
-    if (nakd_thread_create_joinable(_connectivity_loop,
-                             _connectivity_shutdown_cb,
-                        NULL, &_connectivity_thread)) {
-        nakd_log(L_CRIT, "Couldn't create connectivity thread.");
-        return 1;
-    }
-    return 0;
+    struct work update = {
+        .impl = _connectivity_update,
+        .desc = "connectivity update"
+    };
+    nakd_workqueue_add(nakd_wq, &update);
 }
 
 static int _connectivity_init(void) {
     pthread_mutex_init(&_connectivity_mutex, NULL);
-    pthread_cond_init(&_connectivity_cv, NULL);
     _connectivity_update_timer = nakd_timer_add(CONNECTIVITY_UPDATE_INTERVAL,
                                       _connectivity_update_sighandler, NULL);
-    _create_connectivity_thread();
     return 0;
 }
 
 static int _connectivity_cleanup(void) {
     nakd_timer_remove(_connectivity_update_timer);
-    nakd_thread_kill(_connectivity_thread);
-    pthread_cond_destroy(&_connectivity_cv);
     pthread_mutex_destroy(&_connectivity_mutex);
 }
 
 static struct nakd_module module_connectivity = {
     .name = "connectivity",
-    .deps = (const char *[]){ "thread", "event", "timer", "netintf", "wlan",
-                                                                     NULL },
+    .deps = (const char *[]){ "workqueue", "event", "timer", "netintf", "wlan",
+                                                                        NULL },
     .init = _connectivity_init,
     .cleanup = _connectivity_cleanup 
 };

@@ -11,6 +11,7 @@
 #include "event.h"
 #include "nak_uci.h"
 #include "module.h"
+#include "workqueue.h"
 
 #define NETINTF_UBUS_SERVICE "network.device"
 #define NETINTF_UBUS_METHOD "status"
@@ -37,7 +38,9 @@ const char *nakd_interface_type[] = {
 static json_object *_previous_netintf_state = NULL;
 static json_object *_current_netintf_state = NULL;
 static struct nakd_timer *_netintf_update_timer;
+static struct nakd_thread *_netintf_thread;
 
+static pthread_cond_t _netintf_cv;
 static pthread_mutex_t _netintf_mutex;
 
 struct carrier_event {
@@ -337,14 +340,18 @@ cleanup:
     json_tokener_free(jtok);
 }
 
-static void _netintf_update(void) {
+static void _netintf_update(void *priv) {
     nakd_ubus_call(NETINTF_UBUS_SERVICE, NETINTF_UBUS_METHOD, "{}", /* all */
                                          _netintf_update_cb, NULL);
 }
 
 static void _netintf_update_sighandler(siginfo_t *timer_info,
                                   struct nakd_timer *timer) {
-    _netintf_update();
+    struct work update = {
+        .impl = _netintf_update,
+        .desc = "netintf update"
+    };
+    nakd_workqueue_add(nakd_wq, &update);    
 }
 
 static int _netintf_init(void) {
@@ -398,7 +405,8 @@ unlock:
 
 static struct nakd_module module_netintf = {
     .name = "netintf",
-    .deps = (const char *[]){ "uci", "ubus", "event", "timer", NULL },
+    .deps = (const char *[]){ "uci", "ubus", "event", "timer", "workqueue",
+                                                                    NULL },
     .init = _netintf_init,
     .cleanup = _netintf_cleanup
 };

@@ -397,22 +397,25 @@ static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
 }
 
 static int _reload_wireless_config(void) {
+    int status = 0;
+
     /* avoid spurious state updates */
     nakd_netintf_disable_updates();
 
     nakd_log(L_INFO, "Restarting WLAN.");
     char *output;
-    int status = nakd_do_command(NAKD_SCRIPT_PATH, &output, WLAN_UPDATE_SCRIPT);
-    if (!status) {
+    if (nakd_do_command(NAKD_SCRIPT_PATH, &output, WLAN_UPDATE_SCRIPT)) {
         nakd_log(L_CRIT, "Error while running " WLAN_UPDATE_SCRIPT);
-        return 1;
+        status = 1;
+        goto unlock;
     }
 
     nakd_log(L_DEBUG, WLAN_UPDATE_SCRIPT " output: %s", output);
     free(output);
 
+unlock:
     nakd_netintf_enable_updates();
-    return 0;
+    return status;
 }
 
 static void __swap_current_network(json_object *jnetwork) {

@@ -305,8 +305,9 @@ static int _wlan_scan_iwinfo(void) {
         goto cleanup;
     }
 
+    const int count = len/(sizeof(struct iwinfo_scanlist_entry));
     json_object *jresults = json_object_new_array();
-    for (struct iwinfo_scanlist_entry *e = netbuf; e < netbuf + len; e++) {
+    for (struct iwinfo_scanlist_entry *e = netbuf; e < netbuf + count; e++) {
         json_object *jnetwork = json_object_new_object();
         json_object *jssid = json_object_new_string(e->ssid);
         json_object_object_add(jnetwork, "ssid", jssid); 
@@ -322,6 +323,7 @@ static int _wlan_scan_iwinfo(void) {
 
 cleanup:
     free(netbuf);
+    return status;
 }
 
 int nakd_wlan_scan(void) {

@@ -389,6 +389,9 @@ static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
 }
 
 static int _reload_wireless_config(void) {
+    /* avoid spurious state updates */
+    nakd_netintf_disable_updates();
+
     nakd_log(L_INFO, "Restarting WLAN.");
     char *output = nakd_do_command(WLAN_UPDATE_SCRIPT, NAKD_SCRIPT_PATH);
     if (output == NULL) {
@@ -398,6 +401,8 @@ static int _reload_wireless_config(void) {
 
     nakd_log(L_DEBUG, WLAN_UPDATE_SCRIPT " output: %s", output);
     free(output);
+
+    nakd_netintf_enable_updates();
     return 0;
 }
 

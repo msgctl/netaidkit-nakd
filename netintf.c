@@ -43,6 +43,8 @@ static struct nakd_thread *_netintf_thread;
 static pthread_cond_t _netintf_cv;
 static pthread_mutex_t _netintf_mutex;
 
+static int _netintf_updates_disabled;
+
 struct carrier_event {
     /* eg. ETHERNET_WAN_PLUGGED */
     enum nakd_event event_carrier_present;
@@ -340,9 +342,30 @@ cleanup:
     json_tokener_free(jtok);
 }
 
+void nakd_netintf_disable_updates(void) {
+    pthread_mutex_lock(&_netintf_mutex);
+    _netintf_updates_disabled = 1;
+    pthread_mutex_unlock(&_netintf_mutex);
+    nakd_log(L_DEBUG, "Network interface state updates disabled.");
+}
+
+void nakd_netintf_enable_updates(void) {
+    pthread_mutex_lock(&_netintf_mutex);
+    _netintf_updates_disabled = 0;
+    pthread_mutex_unlock(&_netintf_mutex);
+    nakd_log(L_DEBUG, "Network interface state updates enabled.");
+}
+
 static void _netintf_update(void *priv) {
+    pthread_mutex_lock(&_netintf_mutex);
+    if (_netintf_updates_disabled)
+        goto unlock;
+
     nakd_ubus_call(NETINTF_UBUS_SERVICE, NETINTF_UBUS_METHOD, "{}", /* all */
                                          _netintf_update_cb, NULL);
+
+unlock:
+    pthread_mutex_unlock(&_netintf_mutex);
 }
 
 static void _netintf_update_sighandler(siginfo_t *timer_info,
@@ -359,12 +382,14 @@ static void _netintf_update_sighandler(siginfo_t *timer_info,
 static int _netintf_init(void) {
     pthread_mutex_init(&_netintf_mutex, NULL);
     _read_config();
+    nakd_netintf_enable_updates();
     _netintf_update_timer = nakd_timer_add(NETINTF_UPDATE_INTERVAL,
                                  _netintf_update_sighandler, NULL);
     return 0;
 }
 
 static int _netintf_cleanup(void) {
+    nakd_netintf_disable_updates();
     nakd_timer_remove(_netintf_update_timer);
     pthread_mutex_destroy(&_netintf_mutex);
     return 0;

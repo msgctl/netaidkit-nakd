@@ -177,8 +177,10 @@ int nakd_do_command_argv(const char **argv, const char *cwd, char **output) {
         response[MAX_SHELL_RESULT_LEN - 1] = 0;
         close(pipe_fd[PIPE_READ]);
 
-        if (WIFEXITED(wstatus))
+        if (WIFEXITED(wstatus)) {
             status = WEXITSTATUS(wstatus);
+            nakd_log(L_DEBUG, "%s exited with status %d.", argv[1], status);
+        }
     }
 
 ret:

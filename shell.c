@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -14,6 +15,8 @@
 #define PIPE_WRITE      1
 
 #define NAKD_SHELL "/bin/sh"
+
+#define NAKD_MAX_ARG_STRLEN 8192
 
 /* create {"/bin/sh", argv[0], ..., argv[n], NULL} on heap */
 static char **build_argv_json(const char *path, json_object *params) {
@@ -87,22 +90,33 @@ static void free_argv(const char **argv) {
 }
 
 static void log_execve(const char *argv[]) {
-    char execve_log[1024];
     int format_len = 0;
+    char *execve_log = malloc(NAKD_MAX_ARG_STRLEN);
+    nakd_assert(execve_log != NULL);
 
     for (; *argv != NULL; argv++)
         format_len += snprintf(execve_log + format_len, sizeof(execve_log)
                                                - format_len, " %s", *argv);
 
     nakd_log(L_DEBUG, execve_log);
+    free(execve_log);
 }
 
-int nakd_do_command(const char *args, const char *cwd, char **output) {
+int nakd_do_command(const char *cwd, char **output, const char *fmt, ...) {
+    va_list vl;
+    char *args = malloc(NAKD_MAX_ARG_STRLEN);
+    nakd_assert(args != NULL);
+
+    va_start(vl, fmt);
+    snprintf(args, sizeof args, fmt, vl);
+    va_end(vl);
+
     const char **argv = (const char **)(build_argv(args));
     nakd_assert(argv != NULL);
 
     int status = nakd_do_command_argv(argv, cwd, output);
     free_argv(argv);
+    free(args);
     return status;
 }
 

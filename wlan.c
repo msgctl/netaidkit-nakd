@@ -36,6 +36,14 @@ static time_t _last_scan;
 static json_object *_stored_networks;
 static json_object *_current_network;
 
+const char *nakd_wlan_interface_name(void) {
+    return _wlan_interface_name;
+}
+
+const char *nakd_ap_interface_name(void) {
+    return _ap_interface_name;
+}
+
 static int __read_stored_networks(void) {
     int result = 0;
 
@@ -394,7 +402,7 @@ static int _reload_wireless_config(void) {
 
     nakd_log(L_INFO, "Restarting WLAN.");
     char *output;
-    int status = nakd_do_command(WLAN_UPDATE_SCRIPT, NAKD_SCRIPT_PATH, &output);
+    int status = nakd_do_command(NAKD_SCRIPT_PATH, &output, WLAN_UPDATE_SCRIPT);
     if (!status) {
         nakd_log(L_CRIT, "Error while running " WLAN_UPDATE_SCRIPT);
         return 1;

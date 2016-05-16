@@ -293,10 +293,10 @@ static int _wlan_scan_rpcd(void) {
 
 static int _wlan_scan_iwinfo(void) {
     int len, status = 0;
-    char *netbuf = malloc(IWINFO_BUFSIZE);
+    struct iwinfo_scanlist_entry *netbuf = malloc(IWINFO_BUFSIZE);
     nakd_assert(netbuf != NULL);
 
-    if (_iwctx->scanlist(_wlan_interface_name, netbuf, &len)) {
+    if (_iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
         nakd_log(L_CRIT, "Scanning not possible");
         status = 1;
         goto cleanup;
@@ -306,9 +306,7 @@ static int _wlan_scan_iwinfo(void) {
     }
 
     json_object *jresults = json_object_new_array();
-    for (struct iwinfo_scanlist_entry *e = (struct iwinfo_scanlist_entry *)
-                    (netbuf); e < (struct iwinfo_scanlist_entry *)(netbuf +
-                        sizeof(struct iwinfo_scanlist_entry) * len); e++) {
+    for (struct iwinfo_scanlist_entry *e = netbuf; e < netbuf + len; e++) {
         json_object *jnetwork = json_object_new_object();
         json_object *jssid = json_object_new_string(e->ssid);
         json_object_object_add(jnetwork, "ssid", jssid); 
@@ -316,6 +314,8 @@ static int _wlan_scan_iwinfo(void) {
     }
 
     pthread_mutex_lock(&_wlan_mutex);
+    if (_wireless_networks != NULL)
+        json_object_put(_wireless_networks);
     _wireless_networks = jresults;
     _last_scan = time(NULL);
     pthread_mutex_unlock(&_wlan_mutex);

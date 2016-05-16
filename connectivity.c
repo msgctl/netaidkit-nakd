@@ -44,6 +44,7 @@ static void _connectivity_update(void *priv) {
             nakd_log(L_INFO, "\"%s\" WLAN is no longer in range.",
                                                     current_ssid);
             nakd_wlan_disconnect();
+            nakd_disable_interface(NAKD_WLAN);
             nakd_event_push(CONNECTIVITY_LOST);
         } else {
             nakd_log(L_INFO, "\"%s\" WLAN is still in range.",

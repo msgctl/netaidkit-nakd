@@ -8,7 +8,10 @@
 #include "log.h"
 #include "module.h"
 #include "workqueue.h"
+#include "shell.h"
 
+#define GW_ARPING_SCRIPT NAKD_SCRIPT("arping_gateway.sh")
+#define GW_IP_SCRIPT NAKD_SCRIPT("gateway_ip.sh")
 #define CONNECTIVITY_UPDATE_INTERVAL 10000 /* ms */
 
 static pthread_mutex_t _connectivity_mutex;
@@ -20,6 +23,20 @@ static int _ethernet_wan_available(void) {
     if (nakd_carrier_present(NAKD_WAN))
         return 1;
     return 0;
+}
+
+static int _arping_gateway(void) {
+    int status;
+    nakd_assert((status = nakd_do_command(NAKD_SCRIPT_PATH,
+                              NULL, GW_ARPING_SCRIPT " %s",
+                              nakd_wlan_interface_name())) >= 0);
+    return status;
+}
+
+static char *_gateway_ip(void) {
+    char *ip = NULL;
+    nakd_assert(nakd_do_command(NAKD_SCRIPT_PATH, &ip, GW_IP_SCRIPT) >= 0);
+    return ip;
 }
 
 static void _connectivity_update(void *priv) {
@@ -46,9 +63,19 @@ static void _connectivity_update(void *priv) {
                                                     current_ssid);
             nakd_wlan_disconnect();
         } else {
-            nakd_log(L_DEBUG, "\"%s\" WLAN is still in range.",
-                                                 current_ssid);
-            goto unlock;
+            char *gw_ip = _gateway_ip(); 
+            nakd_log(L_DEBUG, "\"%s\" WLAN is still in range,"
+                       " arp-pinging the default gateway: %s",
+                                         current_ssid, gw_ip);
+            free(gw_ip);
+            if (!_arping_gateway()) {
+                nakd_log(L_DEBUG, "Gateway responsive.");
+                goto unlock;
+            } else {
+                nakd_log(L_INFO, "Default gateway doesn't respond to ARP"
+                                                               " ping.");
+                nakd_wlan_disconnect();
+            }
         }
     }
 

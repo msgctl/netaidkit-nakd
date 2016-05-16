@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <json-c/json.h>
+#include <iwinfo.h>
 #include "wlan.h"
 #include "ubus.h"
 #include "log.h"
@@ -34,6 +35,8 @@ static time_t _last_scan;
 
 static json_object *_stored_networks;
 static json_object *_current_network;
+
+static const struct iwinfo_ops *_iwctx;
 
 static int __read_stored_networks(void) {
     int result = 0;
@@ -274,7 +277,7 @@ cleanup:
     json_tokener_free(jtok);
 }
 
-int nakd_wlan_scan(void) {
+static int _wlan_scan_rpcd(void) {
     json_object *jparam = json_object_new_object();
     json_object *jdevice = json_object_new_string(_wlan_interface_name);
     json_object_object_add(jparam, "device", jdevice);
@@ -288,7 +291,45 @@ int nakd_wlan_scan(void) {
     return s;
 }
 
+static int _wlan_scan_iwinfo(void) {
+    int len, status = 0;
+    char *netbuf = malloc(IWINFO_BUFSIZE);
+    nakd_assert(netbuf != NULL);
+
+    if (_iwctx->scanlist(_wlan_interface_name, netbuf, &len)) {
+        nakd_log(L_CRIT, "Scanning not possible");
+        status = 1;
+        goto cleanup;
+    } else if (len <= 0) {
+        nakd_log(L_DEBUG, "No scan results");
+        goto cleanup;
+    }
+
+    json_object *jresults = json_object_new_array();
+    for (struct iwinfo_scanlist_entry *e = (struct iwinfo_scanlist_entry *)
+                    (netbuf); e < (struct iwinfo_scanlist_entry *)(netbuf +
+                        sizeof(struct iwinfo_scanlist_entry) * len); e++) {
+        json_object *jnetwork = json_object_new_object();
+        json_object *jssid = json_object_new_string(e->ssid);
+        json_object_object_add(jnetwork, "ssid", jssid); 
+        json_object_array_add(jresults, jnetwork);
+    }
+
+    pthread_mutex_lock(&_wlan_mutex);
+    _wireless_networks = jresults;
+    _last_scan = time(NULL);
+    pthread_mutex_unlock(&_wlan_mutex);
+
+cleanup:
+    free(netbuf);
+}
+
+int nakd_wlan_scan(void) {
+    _wlan_scan_iwinfo();
+}
+
 static const char *_get_encryption(json_object *jnetwork) {
+    /* TODO */
     return "psk2";
 }
 
@@ -452,12 +493,19 @@ static int _wlan_init(void) {
      * This may be an OpenWRT or hardware issue.
      */
     nakd_wlan_disconnect();
+
+    _iwctx = iwinfo_backend(_wlan_interface_name);
+    if (_iwctx == NULL) {
+        nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
+                                                 _wlan_interface_name);
+    }
     return 0;
 }
 
 static int _wlan_cleanup(void) {
     __cleanup_stored_networks();
     pthread_mutex_destroy(&_wlan_mutex);
+    iwinfo_finish();
     return 0;
 }
 

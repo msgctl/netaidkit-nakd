@@ -9,7 +9,7 @@ DEPEND = $(patsubst %.c, $(BUILD)/%.d, $(SRC))
 INC = -Iinc
 CFLAGS += -std=c99 -D_GNU_SOURCE $(INC)
 
-LDLIBS += -lpthread -lrt -ljson-c -lubus -lubox -lblobmsg_json -luci
+LDLIBS += -lpthread -lrt -ljson-c -lubus -lubox -lblobmsg_json -luci -liwinfo
 
 TARGETS = $(BUILD)/nakd
 

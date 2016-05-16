@@ -173,13 +173,12 @@ static int _run_stage_script(struct stage *stage) {
         return 0;
     }
 
-    char *output = nakd_do_command(path, NULL);
-    if (output != NULL) {
+    char *output;
+    int status = nakd_do_command(path, NULL, &output);
+    if (status >= 0) {
         nakd_log(L_DEBUG, "Stage script output: %s", output);
         free(output);
-    }
-
-    if (output == NULL) {
+    } else {
         _current_stage->err = "Internal error while running stage shellscript";
         return 1;
     }

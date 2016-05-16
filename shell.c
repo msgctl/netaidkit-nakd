@@ -97,29 +97,30 @@ static void log_execve(const char *argv[]) {
     nakd_log(L_DEBUG, execve_log);
 }
 
-char *nakd_do_command(const char *args, const char *cwd) {
+int nakd_do_command(const char *args, const char *cwd, char **output) {
     const char **argv = (const char **)(build_argv(args));
     nakd_assert(argv != NULL);
 
-    char *result = nakd_do_command_argv(argv, cwd);
+    int status = nakd_do_command_argv(argv, cwd, output);
     free_argv(argv);
-    return result;
+    return status;
 }
 
 /* Returns NULL if the command failed.
  */
-char *nakd_do_command_argv(const char **argv, const char *cwd) {
+int nakd_do_command_argv(const char **argv, const char *cwd, char **output) {
     pid_t pid;
     int pipe_fd[2];
     char *response = NULL;
     char *truncated = NULL;
+    int status = -1;
 
     nakd_log_execution_point();
     log_execve((const char **)(argv));
 
     if (access(argv[0], X_OK)) {
         nakd_log(L_CRIT, "The file at %s isn't an executable.", argv[0]);
-        return NULL;
+        goto ret;
     }
 
     response = malloc(MAX_SHELL_RESULT_LEN);
@@ -150,25 +151,30 @@ char *nakd_do_command_argv(const char **argv, const char *cwd) {
 
         nakd_terminate("execve()");
     } else { /* parent */
-        int n = 0;
-        waitpid(pid, NULL, WUNTRACED);
-
+        int wstatus;
+        waitpid(pid, &wstatus, WUNTRACED);
         close(pipe_fd[PIPE_WRITE]);
+
+        int n;
         if ((n = read(pipe_fd[PIPE_READ], response, MAX_SHELL_RESULT_LEN - 1) < 0)) {
             nakd_terminate("read()");
             goto ret;
         }
         response[MAX_SHELL_RESULT_LEN - 1] = 0;
-
         close(pipe_fd[PIPE_READ]);
+
+        if (WIFEXITED(wstatus))
+            status = WEXITSTATUS(wstatus);
     }
 
 ret:
     if (response != NULL) {
-        truncated = strdup(response);
+        /* truncate */
+        if (output != NULL)
+            *output = strdup(response);
         free(response);
     }
-    return truncated;
+    return status;
 }
 
 json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
@@ -199,15 +205,20 @@ json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
         }
     }
 
+    int status;
     char *output;
-    if ((output = nakd_do_command_argv(argv, spec->cwd)) == NULL) {
+    if ((status = nakd_do_command_argv(argv, spec->cwd, &output)) < 0) {
         nakd_log(L_NOTICE, "Error while running shell command %s", spec->argv[0]);
         jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR, NULL);
         goto response;
     }
-    json_object *jcmd_output = json_object_new_string(output);
+    json_object *jresult = json_object_new_object();
+    json_object *joutput = json_object_new_string(output);
     free(output);
-    jresponse = nakd_jsonrpc_response_success(jcmd, jcmd_output);
+    json_object *jstatus = json_object_new_int(status);
+    json_object_object_add(jresult, "output", joutput);
+    json_object_object_add(jresult, "status", jstatus);
+    jresponse = nakd_jsonrpc_response_success(jcmd, jresult);
 
 response:
     free_argv(cleanup_argv);

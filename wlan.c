@@ -393,8 +393,9 @@ static int _reload_wireless_config(void) {
     nakd_netintf_disable_updates();
 
     nakd_log(L_INFO, "Restarting WLAN.");
-    char *output = nakd_do_command(WLAN_UPDATE_SCRIPT, NAKD_SCRIPT_PATH);
-    if (output == NULL) {
+    char *output;
+    int status = nakd_do_command(WLAN_UPDATE_SCRIPT, NAKD_SCRIPT_PATH, &output);
+    if (!status) {
         nakd_log(L_CRIT, "Error while running " WLAN_UPDATE_SCRIPT);
         return 1;
     }

@@ -358,14 +358,13 @@ void nakd_netintf_enable_updates(void) {
 
 static void _netintf_update(void *priv) {
     pthread_mutex_lock(&_netintf_mutex);
-    if (_netintf_updates_disabled)
-        goto unlock;
+    int updates_disabled = _netintf_updates_disabled;
+    pthread_mutex_unlock(&_netintf_mutex);
+    if (updates_disabled)
+        return;
 
     nakd_ubus_call(NETINTF_UBUS_SERVICE, NETINTF_UBUS_METHOD, "{}", /* all */
                                          _netintf_update_cb, NULL);
-
-unlock:
-    pthread_mutex_unlock(&_netintf_mutex);
 }
 
 static void _netintf_update_sighandler(siginfo_t *timer_info,

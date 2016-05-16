@@ -36,8 +36,6 @@ static time_t _last_scan;
 static json_object *_stored_networks;
 static json_object *_current_network;
 
-static const struct iwinfo_ops *_iwctx;
-
 static int __read_stored_networks(void) {
     int result = 0;
 
@@ -296,7 +294,13 @@ static int _wlan_scan_iwinfo(void) {
     struct iwinfo_scanlist_entry *netbuf = malloc(IWINFO_BUFSIZE);
     nakd_assert(netbuf != NULL);
 
-    if (_iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
+    const struct iwinfo_ops *iwctx = iwinfo_backend(_wlan_interface_name);
+    if (iwctx == NULL) {
+        nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
+                                                 _wlan_interface_name);
+    }
+
+    if (iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
         nakd_log(L_CRIT, "Scanning not possible");
         status = 1;
         goto cleanup;
@@ -323,6 +327,7 @@ static int _wlan_scan_iwinfo(void) {
 
 cleanup:
     free(netbuf);
+    iwinfo_finish();
     return status;
 }
 
@@ -496,18 +501,12 @@ static int _wlan_init(void) {
      */
     nakd_wlan_disconnect();
 
-    _iwctx = iwinfo_backend(_wlan_interface_name);
-    if (_iwctx == NULL) {
-        nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
-                                                 _wlan_interface_name);
-    }
     return 0;
 }
 
 static int _wlan_cleanup(void) {
     __cleanup_stored_networks();
     pthread_mutex_destroy(&_wlan_mutex);
-    iwinfo_finish();
     return 0;
 }
 

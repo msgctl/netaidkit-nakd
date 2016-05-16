@@ -45,11 +45,9 @@ static void _connectivity_update(void *priv) {
             nakd_log(L_INFO, "\"%s\" WLAN is no longer in range.",
                                                     current_ssid);
             nakd_wlan_disconnect();
-            nakd_disable_interface(NAKD_WLAN);
-            nakd_event_push(CONNECTIVITY_LOST);
         } else {
-            nakd_log(L_INFO, "\"%s\" WLAN is still in range.",
-                                                current_ssid);
+            nakd_log(L_DEBUG, "\"%s\" WLAN is still in range.",
+                                                 current_ssid);
             goto unlock;
         }
     }
@@ -59,8 +57,6 @@ static void _connectivity_update(void *priv) {
     json_object *jnetwork = nakd_wlan_candidate();
     if (jnetwork == NULL) {
         nakd_log(L_INFO, "No available wireless networks");
-        if (!wan_disabled)
-            nakd_wlan_disconnect();
         nakd_event_push(CONNECTIVITY_LOST);
         goto unlock;
     } 

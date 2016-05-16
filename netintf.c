@@ -160,8 +160,8 @@ static int _interface_disabled(struct uci_option *option, void *priv) {
 int nakd_interface_disabled(enum nakd_interface id) {
     int status;
     pthread_mutex_lock(&_netintf_mutex);
-    if (nakd_update_iface_config(id, _disable_interface,
-                                        &status) != 1) {
+    if (nakd_update_iface_config(id, _interface_disabled,
+                                         &status) != 1) {
         status = -1;
         goto unlock;
     }

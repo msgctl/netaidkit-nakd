@@ -95,7 +95,7 @@ static void log_execve(const char *argv[]) {
     nakd_assert(execve_log != NULL);
 
     for (; *argv != NULL; argv++)
-        format_len += snprintf(execve_log + format_len, sizeof(execve_log)
+        format_len += snprintf(execve_log + format_len, NAKD_MAX_ARG_STRLEN
                                                - format_len, " %s", *argv);
 
     nakd_log(L_DEBUG, execve_log);
@@ -108,7 +108,7 @@ int nakd_do_command(const char *cwd, char **output, const char *fmt, ...) {
     nakd_assert(args != NULL);
 
     va_start(vl, fmt);
-    snprintf(args, sizeof args, fmt, vl);
+    vsnprintf(args, NAKD_MAX_ARG_STRLEN, fmt, vl);
     va_end(vl);
 
     const char **argv = (const char **)(build_argv(args));

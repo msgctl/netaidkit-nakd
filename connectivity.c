@@ -39,6 +39,15 @@ static char *_gateway_ip(void) {
     return ip;
 }
 
+int nakd_online(void) {
+    if (_ethernet_wan_available() == 1)
+        return 1;
+
+    if (!nakd_interface_disabled(NAKD_WLAN))
+        return !_arping_gateway();
+    return 0;
+}
+
 static void _connectivity_update(void *priv) {
     pthread_mutex_lock(&_connectivity_mutex);
     /* prefer ethernet */

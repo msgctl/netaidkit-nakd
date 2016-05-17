@@ -209,7 +209,7 @@ static int _led_cleanup(void) {
 
 static struct nakd_module module_led = {
     .name = "led",
-    .deps = (const char *[]){ "thread", "timer", NULL },
+    .deps = (const char *[]){ "config", "thread", "timer", NULL },
     .init = _led_init,
     .cleanup = _led_cleanup
 };

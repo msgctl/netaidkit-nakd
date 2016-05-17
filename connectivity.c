@@ -122,6 +122,7 @@ static int _connectivity_init(void) {
 static int _connectivity_cleanup(void) {
     nakd_timer_remove(_connectivity_update_timer);
     pthread_mutex_destroy(&_connectivity_mutex);
+    return 0;
 }
 
 static struct nakd_module module_connectivity = {

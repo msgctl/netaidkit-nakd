@@ -84,7 +84,8 @@ static void _connectivity_update(void *priv) {
     json_object *jnetwork = nakd_wlan_candidate();
     if (jnetwork == NULL) {
         nakd_log(L_INFO, "No available wireless networks");
-        nakd_event_push(CONNECTIVITY_LOST);
+        if (!wan_disabled)
+            nakd_event_push(CONNECTIVITY_LOST);
         goto unlock;
     } 
 

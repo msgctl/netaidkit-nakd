@@ -289,7 +289,6 @@ static int _wlan_scan_rpcd(void) {
     json_object_object_add(jparam, "device", jdevice);
     const char *param = json_object_get_string(jparam);
 
-    nakd_log(L_INFO, "Scanning for wireless networks."); 
     int s = nakd_ubus_call(WLAN_SCAN_SERVICE, WLAN_SCAN_METHOD, param,
                                                _wlan_update_cb, NULL);
     json_object_put(jparam);
@@ -340,6 +339,7 @@ unlock:
 }
 
 int nakd_wlan_scan(void) {
+    nakd_log(L_INFO, "Scanning for wireless networks."); 
     _wlan_scan_iwinfo();
 }
 

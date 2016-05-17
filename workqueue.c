@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <time.h>
+#include <setjmp.h>
+#include <errno.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
@@ -9,6 +11,8 @@
 #include "log.h"
 #include "module.h"
 #include "timer.h"
+
+#define WQ_CANCEL_SIGNAL SIGCONT
 
 #define TIMEOUT_CHECK_INTERVAL 2500 /* ms */
 
@@ -21,7 +25,11 @@ struct worker_thread_priv {
 };
 
 static pthread_mutex_t _status_lock;
-struct nakd_timer *_timeout_timer;
+static struct nakd_timer *_timeout_timer;
+
+static void __cancel_work(struct nakd_thread *thread) {
+    nakd_assert(pthread_kill(thread->tid, WQ_CANCEL_SIGNAL) >= 0);
+}
 
 static void __check_timeout(void) {
     int now = time(NULL);
@@ -40,6 +48,11 @@ static void __check_timeout(void) {
             if (processing_time > priv->wq->timeout) {
                 nakd_log(L_WARNING, "workqueue: \"%s\" is taking too much time: %ds",
                                                priv->current->name, processing_time);
+                if (processing_time > priv->wq->timeout * 2) {
+                    nakd_log(L_WARNING, "workqueue: canceling \"%s\".",
+                                                  priv->current->name);
+                    __cancel_work(*thr);
+                }
             }
         }
     }
@@ -83,9 +96,33 @@ static void __free_queue(struct workqueue *wq) {
     }
 }
 
+static void _cancel_sighandler(int signum) {
+    nakd_assert(signum = WQ_CANCEL_SIGNAL);
+
+    struct nakd_thread *thread = nakd_thread_private();
+    struct worker_thread_priv *priv = thread->priv;
+    struct work *current = priv->current;
+    if (current->canceled != NULL)
+        current->canceled(current->priv);
+    longjmp(current->canceled_jmpbuf, 1);
+}
+
+static void _setup_cancel_sighandler(void) {
+    struct sigaction cancel_action = {
+        .sa_handler = _cancel_sighandler,
+        .sa_flags = 0
+    };
+    sigemptyset(&cancel_action.sa_mask);
+
+    if (sigaction(WQ_CANCEL_SIGNAL, &cancel_action, NULL))
+        nakd_terminate("sigaction(): %s", strerror(errno));
+}
+
 static void _workqueue_loop(struct nakd_thread *thr) {
     struct worker_thread_priv *priv = thr->priv;
     struct workqueue *wq = priv->wq;
+
+    _setup_cancel_sighandler();
 
     for (;;) {
         pthread_mutex_lock(&wq->lock);
@@ -112,7 +149,8 @@ static void _workqueue_loop(struct nakd_thread *thr) {
         priv->current = work;
         pthread_mutex_unlock(&_status_lock);
 
-        work->impl(work->priv);
+        if (!setjmp(work->canceled_jmpbuf))
+            work->impl(work->priv);
 
         time_t now = time(NULL);
         if (work->name != NULL)

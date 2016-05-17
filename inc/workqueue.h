@@ -2,6 +2,7 @@
 #define NAKD_WORKQUEUE_H
 #include <pthread.h>
 #include <time.h>
+#include <setjmp.h>
 #include "thread.h"
 
 #define NAKD_DEFAULT_WQ_THREADS 8
@@ -11,10 +12,13 @@ typedef void (*nakd_work_func)(void *priv);
 
 struct work {
     nakd_work_func impl;
+    nakd_work_func canceled;
     void *priv;   
 
     const char *name;
     time_t start_time;
+
+    jmp_buf canceled_jmpbuf;
 
     struct work *next;
 };

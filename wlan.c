@@ -308,6 +308,11 @@ static int _wlan_scan_iwinfo(void) {
                                                  _wlan_interface_name);
     }
 
+    /*
+     * scanlist() can lock up the thread if there's another process using the
+     * interface at the time. This problem might stem from intf backend, thus
+     * it might not be fixable in libiwinfo.
+     */
     nakd_log(L_DEBUG, "Initialized libiwinfo context, calling iwctx->scanlist().");
     if (iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
         nakd_log(L_CRIT, "Scanning not possible");

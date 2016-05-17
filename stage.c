@@ -11,6 +11,7 @@
 #include "openvpn.h"
 #include "nak_uci.h"
 #include "module.h"
+#include "connectivity.h"
 
 #define NAKD_STAGE_SCRIPT_PATH NAKD_SCRIPT_PATH "stage/"
 #define NAKD_STAGE_SCRIPT_FMT (NAKD_STAGE_SCRIPT_PATH "%s" ".sh")
@@ -28,6 +29,7 @@ static int _run_stage_script(struct stage *stage);
 static int _start_openvpn(struct stage *stage);
 static int _stop_openvpn(struct stage *stage);
 static int _run_uci_hooks(struct stage *stage);
+static int _nakd_online(struct stage *stage);
 static struct stage _stages[] = {
     {
         .name = "stage_default",
@@ -59,6 +61,11 @@ static struct stage _stages[] = {
         .desc = "",
         .work = (struct stage_step[]){
            { 
+                .name = "Connectivity test",
+                .desc = "",
+                .work = _nakd_online
+           },
+           { 
                 .name = "Stopping OpenVPN",
                 .desc = "",
                 .work = _stop_openvpn
@@ -84,6 +91,11 @@ static struct stage _stages[] = {
         .desc = "",
         .work = (struct stage_step[]){
            { 
+                .name = "Connectivity test",
+                .desc = "",
+                .work = _nakd_online
+           },
+           { 
                 .name = "Calling UCI hooks",
                 .desc = "",
                 .work = _run_uci_hooks 
@@ -108,6 +120,11 @@ static struct stage _stages[] = {
         .name = "stage_tor",
         .desc = "",
         .work = (struct stage_step[]){
+           { 
+                .name = "Connectivity test",
+                .desc = "",
+                .work = _nakd_online
+           },
            { 
                 .name = "Stopping OpenVPN",
                 .desc = "",
@@ -187,7 +204,7 @@ static int _run_stage_script(struct stage *stage) {
 
 static int _start_openvpn(struct stage *stage) {
     if (nakd_start_openvpn()) {
-        _current_stage->err = "Internal error while starting OpenVPN daemon";
+        stage->err = "Internal error while starting OpenVPN daemon";
         return 1;
     }
     return 0;
@@ -195,7 +212,7 @@ static int _start_openvpn(struct stage *stage) {
 
 static int _stop_openvpn(struct stage *stage) {
     if (nakd_stop_openvpn()) {
-        _current_stage->err = "Internal error while stopping OpenVPN daemon";
+        stage->err = "Internal error while stopping OpenVPN daemon";
         return 1;
     }
     return 0;
@@ -203,7 +220,15 @@ static int _stop_openvpn(struct stage *stage) {
 
 static int _run_uci_hooks(struct stage *stage) {
     if (nakd_call_uci_hooks(stage->hooks, stage->name)) {
-        _current_stage->err = "Internal error while rewriting UCI configuration";
+        stage->err = "Internal error while rewriting UCI configuration";
+        return 1;
+    }
+    return 0;
+}
+
+static int _nakd_online(struct stage *stage) {
+    if (!nakd_online()) {
+        stage->err = "NetAidKit isn't online.";
         return 1;
     }
     return 0;
@@ -274,7 +299,8 @@ response:
 
 static struct nakd_module module_stage = {
     .name = "stage",
-    .deps = NULL,
+    .deps = (const char *[]){ "workqueue", "connectivity", "notification",
+                                                                   NULL },
     .init = _stage_init,
     .cleanup = _stage_cleanup
 };

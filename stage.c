@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <linux/limits.h>
+#include <pthread.h>
 #include <json-c/json.h>
 #include "stage.h"
 #include "hooks.h"
@@ -15,6 +16,8 @@
 
 #define NAKD_STAGE_SCRIPT_PATH NAKD_SCRIPT_PATH "stage/"
 #define NAKD_STAGE_SCRIPT_FMT (NAKD_STAGE_SCRIPT_PATH "%s" ".sh")
+
+static pthread_mutex_t _stage_mutex;
 
 static void toggle_rule(const char *hook_name, const char *state,
                                       struct uci_option *option);
@@ -235,17 +238,22 @@ static int _nakd_online(struct stage *stage) {
 }
 
 static int _stage_init(void) {
+    pthread_mutex_init(&_stage_mutex, NULL);
     if (_current_stage == NULL)
         return nakd_stage_spec(_default_stage);
     return 0;
 }
 
 static int _stage_cleanup(void) {
+    pthread_mutex_destroy(&_stage_mutex);
     return 0;
 }
 
 int nakd_stage_spec(struct stage *stage) {
+    int status = 0;
+
     nakd_log(L_INFO, "Stage %s", stage->name);
+    pthread_mutex_lock(&_stage_mutex);
 
     _current_stage = stage;
     _current_stage->err = NULL;
@@ -253,11 +261,16 @@ int nakd_stage_spec(struct stage *stage) {
     for (const struct stage_step *step = stage->work; step->name != NULL;
                                                                 step++) {
         nakd_log(L_INFO, "Stage %s: running step %s", stage->name, step->name);
-        if (step->work(stage))
-            return 1;
+        if (step->work(stage)) {
+            status = 1;
+            goto unlock;
+        }
     }
     nakd_log(L_INFO, "Stage %s: done!", stage->name);
-    return 0;
+
+unlock:
+    pthread_mutex_unlock(&_stage_mutex);
+    return status;
 }
 
 int nakd_stage(const char *stage_name) {

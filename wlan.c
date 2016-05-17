@@ -308,6 +308,7 @@ static int _wlan_scan_iwinfo(void) {
                                                  _wlan_interface_name);
     }
 
+    nakd_log(L_DEBUG, "Initialized libiwinfo context, calling iwctx->scanlist().");
     if (iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
         nakd_log(L_CRIT, "Scanning not possible");
         status = 1;
@@ -316,6 +317,8 @@ static int _wlan_scan_iwinfo(void) {
         nakd_log(L_DEBUG, "No scan results");
         goto unlock;
     }
+
+    nakd_log(L_DEBUG, "Processing scan results.");
 
     const int count = len/(sizeof(struct iwinfo_scanlist_entry));
     json_object *jresults = json_object_new_array();

@@ -302,6 +302,7 @@ static int _wlan_scan_iwinfo(void) {
     struct iwinfo_scanlist_entry *netbuf = malloc(IWINFO_BUFSIZE);
     nakd_assert(netbuf != NULL);
 
+    pthread_mutex_lock(&_wlan_mutex);
     const struct iwinfo_ops *iwctx = iwinfo_backend(_wlan_interface_name);
     if (iwctx == NULL) {
         nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
@@ -311,10 +312,10 @@ static int _wlan_scan_iwinfo(void) {
     if (iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
         nakd_log(L_CRIT, "Scanning not possible");
         status = 1;
-        goto cleanup;
+        goto unlock;
     } else if (len <= 0) {
         nakd_log(L_DEBUG, "No scan results");
-        goto cleanup;
+        goto unlock;
     }
 
     const int count = len/(sizeof(struct iwinfo_scanlist_entry));
@@ -326,16 +327,15 @@ static int _wlan_scan_iwinfo(void) {
         json_object_array_add(jresults, jnetwork);
     }
 
-    pthread_mutex_lock(&_wlan_mutex);
     if (_wireless_networks != NULL)
         json_object_put(_wireless_networks);
     _wireless_networks = jresults;
     _last_scan = time(NULL);
-    pthread_mutex_unlock(&_wlan_mutex);
 
-cleanup:
+unlock:
     free(netbuf);
     iwinfo_finish();
+    pthread_mutex_unlock(&_wlan_mutex);
     return status;
 }
 

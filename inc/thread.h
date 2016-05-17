@@ -25,5 +25,6 @@ int nakd_thread_create_joinable(nakd_thread_routine start,
                              struct nakd_thread **thread);
 int nakd_thread_kill(struct nakd_thread *thr);
 void nakd_thread_killall(void);
+struct nakd_thread *nakd_thread_private(void);
 
 #endif

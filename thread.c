@@ -63,12 +63,14 @@ static void _cleanup_thread(void *priv) {
     pthread_mutex_unlock(&_shutdown_mutex);
 }
 
+struct nakd_thread *nakd_thread_private(void) {
+    return (struct nakd_thread *)(pthread_getspecific(_tls_data)); 
+}
+
 static void _shutdown_sighandler(int signum) {
     nakd_assert(signum == NAKD_THREAD_SHUTDOWN_SIGNAL);
 
-    struct nakd_thread *thr =
-        (struct nakd_thread *)(pthread_getspecific(_tls_data)); 
-
+    struct nakd_thread *thr = nakd_thread_private();
     nakd_assert(thr->shutdown != NULL);
     thr->shutdown(thr);
 }

@@ -382,6 +382,7 @@ static int _netintf_init(void) {
     pthread_mutex_init(&_netintf_mutex, NULL);
     _read_config();
     nakd_netintf_enable_updates();
+    _netintf_update(NULL);
     _netintf_update_timer = nakd_timer_add(NETINTF_UPDATE_INTERVAL,
                                  _netintf_update_sighandler, NULL);
     return 0;

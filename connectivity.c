@@ -128,7 +128,7 @@ static int _connectivity_cleanup(void) {
 static struct nakd_module module_connectivity = {
     .name = "connectivity",
     .deps = (const char *[]){ "workqueue", "event", "timer", "netintf", "wlan",
-                                                                        NULL },
+                                   "notification" /* event handlers */, NULL },
     .init = _connectivity_init,
     .cleanup = _connectivity_cleanup 
 };

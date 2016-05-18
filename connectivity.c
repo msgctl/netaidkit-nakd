@@ -127,6 +127,9 @@ static int _connectivity_init(void) {
     pthread_mutex_init(&_connectivity_mutex, NULL);
     _connectivity_update_timer = nakd_timer_add(CONNECTIVITY_UPDATE_INTERVAL,
                                       _connectivity_update_sighandler, NULL);
+
+    nakd_event_push(CONNECTIVITY_LOST);
+
     struct work *update = nakd_alloc_work(&_update_desc);
     nakd_workqueue_add(nakd_wq, update);
     return 0;

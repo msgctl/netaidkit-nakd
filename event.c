@@ -6,8 +6,7 @@
 #include "module.h"
 #include "workqueue.h"
 
-#define MAX_EVENTS 32
-#define MAX_EVENT_HANDLERS 32
+#define MAX_EVENT_HANDLERS 64
 
 static pthread_mutex_t _event_mutex;
 static struct event_handler _event_handlers[MAX_EVENT_HANDLERS];

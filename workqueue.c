@@ -42,15 +42,15 @@ static void __check_timeout(void) {
             thr < wq->threads + wq->threadcount;
                                         thr++) {
         struct worker_thread_priv *priv = (*thr)->priv;
-        if (priv->current != NULL) {
+        if (priv->current != NULL && priv->current->desc.timeout) {
             int processing_time = now - priv->current->start_time;
 
-            if (processing_time > priv->wq->timeout) {
-                nakd_log(L_WARNING, "workqueue: \"%s\" is taking too much time: %ds",
-                                               priv->current->name, processing_time);
-                if (processing_time > priv->wq->timeout * 2) {
+            if (processing_time > priv->current->desc.timeout / 2) {
+                nakd_log(L_WARNING, "workqueue: \"%s\" is taking too much"
+                      " time: %ds", priv->current->desc.name, processing_time);
+                if (processing_time > priv->current->desc.timeout) {
                     nakd_log(L_WARNING, "workqueue: canceling \"%s\".",
-                                                  priv->current->name);
+                                                  priv->current->desc.name);
                     __cancel_work(*thr);
                 }
             }
@@ -64,12 +64,21 @@ static void _timeout_sighandler(siginfo_t *timer_info,
     __check_timeout();
 }
 
-static struct work *__add_work(struct workqueue *wq) {
+struct work *nakd_alloc_work(const struct work_desc *desc) {
+    struct work *work = calloc(1, sizeof(struct work));
+    nakd_assert(work != NULL);
+
+    pthread_cond_init(&work->completed_cv, NULL);
+    work->desc = *desc;
+    return work;
+}
+
+static struct work *__add_work(struct workqueue *wq, struct work *new) {
     struct work **work = &wq->work;
     while (*work != NULL)
         work = &(*work)->next;
 
-    *work = calloc(1, sizeof(struct work));
+    *work = new;
     return *work;
 }
 
@@ -83,7 +92,8 @@ static struct work *__dequeue(struct workqueue *wq) {
     return cur;
 }
 
-static void __free_work(struct work *work) {
+void nakd_free_work(struct work *work) {
+    pthread_cond_destroy(&work->completed_cv);
     free(work);
 }
 
@@ -91,20 +101,20 @@ static void __free_queue(struct workqueue *wq) {
     struct work *work = wq->work;
     while (work != NULL) {
         struct work *next = work->next;
-        __free_work(work);
+        nakd_free_work(work);
         work = next;
     }
 }
 
 static void _cancel_sighandler(int signum) {
-    nakd_assert(signum = WQ_CANCEL_SIGNAL);
+    nakd_assert(signum == WQ_CANCEL_SIGNAL);
 
     struct nakd_thread *thread = nakd_thread_private();
     struct worker_thread_priv *priv = thread->priv;
     struct work *current = priv->current;
-    if (current->canceled != NULL)
-        current->canceled(current->priv);
-    longjmp(current->canceled_jmpbuf, 1);
+    if (current->desc.canceled != NULL)
+        current->desc.canceled(current->desc.priv);
+    siglongjmp(current->canceled_jmpbuf, 1);
 }
 
 static void _setup_cancel_sighandler(void) {
@@ -118,11 +128,18 @@ static void _setup_cancel_sighandler(void) {
         nakd_terminate("sigaction(): %s", strerror(errno));
 }
 
+static void _unblock_cancel_signal(void) {
+    sigset_t cancel;
+    sigemptyset(&cancel);
+    sigaddset(&cancel, WQ_CANCEL_SIGNAL);
+    nakd_assert(!pthread_sigmask(SIG_UNBLOCK, &cancel, NULL));
+}
+
 static void _workqueue_loop(struct nakd_thread *thr) {
     struct worker_thread_priv *priv = thr->priv;
     struct workqueue *wq = priv->wq;
 
-    _setup_cancel_sighandler();
+    _unblock_cancel_signal();
 
     for (;;) {
         pthread_mutex_lock(&wq->lock);
@@ -141,26 +158,34 @@ static void _workqueue_loop(struct nakd_thread *thr) {
         if (work == NULL)
             continue;
 
-        if (work->name != NULL)
-            nakd_log(L_DEBUG, "workqueue: processing \"%s\"", work->name);
+        if (work->desc.name != NULL)
+            nakd_log(L_DEBUG, "workqueue: processing \"%s\"", work->desc.name);
 
         pthread_mutex_lock(&_status_lock);
         work->start_time = time(NULL);
         priv->current = work;
         pthread_mutex_unlock(&_status_lock);
 
-        if (!setjmp(work->canceled_jmpbuf))
-            work->impl(work->priv);
+        if (!sigsetjmp(work->canceled_jmpbuf, 1)) {
+            work->status = WORK_PROCESSING;
+            work->desc.impl(work->desc.priv);
+            work->status = WORK_DONE;
+        } else {
+            work->status = WORK_CANCELED;
+        }
 
         time_t now = time(NULL);
-        if (work->name != NULL)
+        if (work->desc.name != NULL)
             nakd_log(L_DEBUG, "workqueue: finished \"%s\", took %ds",
-                                 work->name, now - work->start_time);
+                                 work->desc.name, now - work->start_time);
+
+        pthread_cond_broadcast(&work->completed_cv);
 
         pthread_mutex_lock(&_status_lock);
         priv->current = NULL;
         pthread_mutex_unlock(&_status_lock);
-        __free_work(work);
+        if (!work->desc.synchronous)
+            nakd_free_work(work);
     }
     pthread_mutex_unlock(&wq->lock);
 }
@@ -170,13 +195,11 @@ static void _workqueue_shutdown_cb(struct nakd_thread *thr) {
     wq->shutdown = 1;
 }
 
-void nakd_workqueue_create(struct workqueue **wq, int threadcount, int timeout) {
+void nakd_workqueue_create(struct workqueue **wq, int threadcount) {
     *wq = calloc(1, sizeof(struct workqueue));
 
     pthread_mutex_init(&(*wq)->lock, NULL);
     pthread_cond_init(&(*wq)->cv, NULL);
-
-    (*wq)->timeout = timeout;
 
     (*wq)->threadcount = threadcount;
     (*wq)->threads = calloc(threadcount, sizeof(struct nakd_thread *));
@@ -213,10 +236,15 @@ void nakd_workqueue_destroy(struct workqueue **wq) {
 
 void nakd_workqueue_add(struct workqueue *wq, struct work *work) {
     pthread_mutex_lock(&wq->lock);
-    struct work *new = __add_work(wq);
-    *new = *work;
+    struct work *new = __add_work(wq, work);
+    new->status = WORK_QUEUED;
     pthread_cond_signal(&wq->cv);
-    pthread_mutex_unlock(&wq->lock);
+    if (!work->desc.synchronous) {
+        pthread_mutex_unlock(&wq->lock);
+    } else {
+        pthread_cond_wait(&work->completed_cv, &wq->lock);
+        pthread_mutex_unlock(&wq->lock);
+    }
 }
 
 int nakd_work_pending(struct workqueue *wq, const char *name) {
@@ -226,7 +254,7 @@ int nakd_work_pending(struct workqueue *wq, const char *name) {
     /* check queue */
     struct work *work = wq->work;
     while (work != NULL) {
-        if (!strcmp(name, work->name)) {
+        if (!strcmp(name, work->desc.name)) {
             s = 1;
             goto unlock_wq;
         }
@@ -242,7 +270,7 @@ int nakd_work_pending(struct workqueue *wq, const char *name) {
         if (priv->current == NULL)
             continue;
 
-        if (!strcmp(name, priv->current->name)) {
+        if (!strcmp(name, priv->current->desc.name)) {
             s = 1;
             goto unlock_workers;
         }
@@ -257,8 +285,9 @@ unlock_wq:
 
 static int _workqueue_init(void) {
     pthread_mutex_init(&_status_lock, NULL);
-    nakd_workqueue_create(&nakd_wq, NAKD_DEFAULT_WQ_THREADS,
-                                      NAKD_DEFAULT_TIMEOUT);
+    /* cancel wq entries on timeout */
+    _setup_cancel_sighandler();
+    nakd_workqueue_create(&nakd_wq, NAKD_DEFAULT_WQ_THREADS);
     _timeout_timer = nakd_timer_add(TIMEOUT_CHECK_INTERVAL,
                                 _timeout_sighandler, NULL);
     return 0;

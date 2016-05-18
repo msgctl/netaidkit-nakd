@@ -18,6 +18,7 @@ static const int _sigmask[] = {
     SIGHUP,
     SIGTERM,
     SIGALRM,
+    SIGCONT,
     0
 };
 
@@ -109,7 +110,8 @@ void nakd_sigwait_loop(void) {
         if (sigwaitinfo(&set, &siginfo) != -1) {
             _sighandler(&siginfo);
         } else {
-            nakd_terminate("sigwaitinfo(): %s", strerror(errno));
+            if (errno != EINTR)
+                nakd_terminate("sigwaitinfo(): %s", strerror(errno));
         }
     }
 }

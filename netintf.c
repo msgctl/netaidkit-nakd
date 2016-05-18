@@ -20,7 +20,7 @@
 
 /* eg. "option nak_lan_tag 1" for wired lan interface */
 const char *nakd_uci_interface_tag[] = {
-    [INTF_UNSPECIFIED] "?",
+    [INTF_UNSPECIFIED] = "?",
     [NAKD_LAN] = "nak_lan_tag",
     [NAKD_WAN] = "nak_wan_tag",
     [NAKD_WLAN] = "nak_wlan_tag",
@@ -28,7 +28,7 @@ const char *nakd_uci_interface_tag[] = {
 };
 
 const char *nakd_interface_type[] = {
-    [INTF_UNSPECIFIED] "?",
+    [INTF_UNSPECIFIED] = "?",
     [NAKD_LAN] = "LAN",
     [NAKD_WAN] = "WAN",
     [NAKD_WLAN] = "WLAN",
@@ -367,15 +367,18 @@ static void _netintf_update(void *priv) {
                                          _netintf_update_cb, NULL);
 }
 
+static struct work_desc _update_desc = {
+    .impl = _netintf_update,
+    .name = "netintf update"
+};
+
 static void _netintf_update_sighandler(siginfo_t *timer_info,
                                   struct nakd_timer *timer) {
-    struct work update = {
-        .impl = _netintf_update,
-        .name = "netintf update"
-    };
     /* skip, if there's already a pending update in the workqueue */
-    if (!nakd_work_pending(nakd_wq, update.name))
-        nakd_workqueue_add(nakd_wq, &update);
+    if (!nakd_work_pending(nakd_wq, _update_desc.name)) {
+        struct work *work = nakd_alloc_work(&_update_desc);
+        nakd_workqueue_add(nakd_wq, work);
+    }
 }
 
 static int _netintf_init(void) {

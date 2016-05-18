@@ -13,6 +13,7 @@
 #include "json.h"
 #include "netintf.h"
 #include "shell.h"
+#include "workqueue.h"
 
 #define WLAN_NETWORK_LIST_PATH "/etc/nakd/wireless_networks"
 
@@ -236,7 +237,8 @@ json_object *nakd_wlan_candidate(void) {
 
 int nakd_wlan_netcount(void) {
     pthread_mutex_lock(&_wlan_mutex);
-    int count = json_object_array_length(_wireless_networks);
+    int count = _wireless_networks == NULL ? 0 :
+        json_object_array_length(_wireless_networks);
     pthread_mutex_unlock(&_wlan_mutex);
     return count;
 }
@@ -296,14 +298,18 @@ static int _wlan_scan_rpcd(void) {
     return s;
 }
 
-static int _wlan_scan_iwinfo(void) {
-    int len, status = 0;
-    struct iwinfo_scanlist_entry *netbuf = malloc(IWINFO_BUFSIZE);
-    nakd_assert(netbuf != NULL);
+struct iwinfo_scan_priv {
+    const struct iwinfo_ops *iwctx;
+    struct iwinfo_scanlist_entry *networks;
+    int status;
+};
 
-    pthread_mutex_lock(&_wlan_mutex);
-    const struct iwinfo_ops *iwctx = iwinfo_backend(_wlan_interface_name);
-    if (iwctx == NULL) {
+static void _wlan_scan_iwinfo_work(void *priv) {
+    struct iwinfo_scan_priv *scan = priv;
+    scan->status = 0;
+
+    scan->iwctx = iwinfo_backend(_wlan_interface_name);
+    if (scan->iwctx == NULL) {
         nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
                                                  _wlan_interface_name);
     }
@@ -313,21 +319,26 @@ static int _wlan_scan_iwinfo(void) {
      * interface at the time. This problem might stem from intf backend, thus
      * it might not be fixable in libiwinfo.
      */
+    int len;
+    scan->networks = malloc(IWINFO_BUFSIZE);
+    nakd_assert(scan->networks != NULL); 
     nakd_log(L_DEBUG, "Initialized libiwinfo context, calling iwctx->scanlist().");
-    if (iwctx->scanlist(_wlan_interface_name, (void *)(netbuf), &len)) {
+    if (scan->iwctx->scanlist(_wlan_interface_name, (void *)(scan->networks),
+                                                                     &len)) {
         nakd_log(L_CRIT, "Scanning not possible");
-        status = 1;
-        goto unlock;
+        scan->status = 1;
+        return;
     } else if (len <= 0) {
         nakd_log(L_DEBUG, "No scan results");
-        goto unlock;
+        return;
     }
 
     nakd_log(L_DEBUG, "Processing scan results.");
 
     const int count = len/(sizeof(struct iwinfo_scanlist_entry));
     json_object *jresults = json_object_new_array();
-    for (struct iwinfo_scanlist_entry *e = netbuf; e < netbuf + count; e++) {
+    for (struct iwinfo_scanlist_entry *e = scan->networks;
+                        e < scan->networks + count; e++) {
         json_object *jnetwork = json_object_new_object();
         json_object *jssid = json_object_new_string(e->ssid);
         json_object_object_add(jnetwork, "ssid", jssid); 
@@ -338,11 +349,47 @@ static int _wlan_scan_iwinfo(void) {
         json_object_put(_wireless_networks);
     _wireless_networks = jresults;
     _last_scan = time(NULL);
+} 
+
+static void _cleanup_iwinfo_scan(struct iwinfo_scan_priv *scan) {
+    free(scan->networks);
+    iwinfo_finish();
+}
+
+static void _wlan_scan_iwinfo_canceled(void *priv) {
+    struct iwinfo_scan_priv *scan = priv;
+
+    nakd_log(L_INFO, "libiwinfo wireless network scan canceled, cleaning up.");
+    _cleanup_iwinfo_scan(scan);
+} 
+
+static struct iwinfo_scan_priv _iwinfo_scan_priv;
+static struct work_desc _iwinfo_scan_desc = {
+    .impl = _wlan_scan_iwinfo_work,
+    .canceled = _wlan_scan_iwinfo_canceled,
+    .name = "wlan scan",
+    .synchronous = 1,
+    .timeout = 10,
+    .priv = &_iwinfo_scan_priv
+};
+
+static int _wlan_scan_iwinfo(void) {
+    int status;
+    struct work *scan_wq_entry = nakd_alloc_work(&_iwinfo_scan_desc);
+
+    pthread_mutex_lock(&_wlan_mutex);
+    nakd_workqueue_add(nakd_wq, scan_wq_entry);
+    if (scan_wq_entry->status == WORK_CANCELED) {
+        status = 1;
+        goto unlock;
+    }
+
+    status = _iwinfo_scan_priv.status;
+    _cleanup_iwinfo_scan(&_iwinfo_scan_priv);
 
 unlock:
-    free(netbuf);
-    iwinfo_finish();
     pthread_mutex_unlock(&_wlan_mutex);
+    nakd_free_work(scan_wq_entry);
     return status;
 }
 
@@ -646,7 +693,7 @@ unlock:
 
 static struct nakd_module module_wlan = {
     .name = "wlan",
-    .deps = (const char *[]){ "uci", "ubus", "netintf", NULL },
+    .deps = (const char *[]){ "uci", "ubus", "netintf", "workqueue", NULL },
     .init = _wlan_init,
     .cleanup = _wlan_cleanup 
 };

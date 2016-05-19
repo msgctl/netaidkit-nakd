@@ -98,6 +98,48 @@ unlock:
     return status;
 }
 
+int nakd_config_set(const char *key, const char *val) {
+    int status = 0;
+    pthread_mutex_lock(&_config_mutex);
+
+    struct uci_package *nakd_pkg = nakd_load_uci_package(CONFIG_UCI_PACKAGE);
+    if (nakd_pkg == NULL) {
+        nakd_log(L_NOTICE, "Couldn't load nakd UCI configuration package \""
+                   CONFIG_UCI_PACKAGE "\", unable to set config key \"%s\" "
+                                                    "to \"%s\".", key, val);
+        status = 1;
+        goto unlock;
+    }
+
+    struct uci_section *nakd_s = uci_lookup_section(nakd_pkg->ctx, nakd_pkg,
+                                                        CONFIG_UCI_SECTION);
+    if (nakd_s == NULL) {
+        nakd_log(L_NOTICE, "Couldn't find nakd UCI configuration section \""
+                   CONFIG_UCI_PACKAGE "\", unable to set config key \"%s\" "
+                                                    "to \"%s\".", key, val);
+        status = 1;
+        goto cleanup;
+    }
+
+    struct uci_ptr option = {
+        .package = nakd_pkg->e.name,
+        .section = nakd_s->e.name,
+        .option = key,
+        .value = val 
+    };
+    nakd_uci_set(&option);
+    /* TODO compare usage w/ existing UCI implementation */
+    nakd_uci_save(nakd_pkg);
+    nakd_uci_commit(&nakd_pkg, true);
+
+cleanup:
+    if (!nakd_unload_uci_package(nakd_pkg))
+        nakd_log(L_CRIT, "Couldn't unload nakd UCI package.");
+unlock:
+    pthread_mutex_unlock(&_config_mutex);
+    return status;
+}
+
 static struct nakd_module module_config = {
     .name = "config",
     .deps = (const char *[]){ "uci", NULL },

@@ -19,6 +19,6 @@ int nakd_uci_option_foreach_pkg(const char *package, const char *option_name,
 int nakd_uci_save(struct uci_package *pkg);
 int nakd_uci_commit(struct uci_package **pkg, bool overwrite);
 int nakd_unload_uci_package(struct uci_package *pkg);
-int nakd_uci_set(struct uci_context *ctx, struct uci_ptr *ptr);
+int nakd_uci_set(struct uci_ptr *ptr);
 
 #endif

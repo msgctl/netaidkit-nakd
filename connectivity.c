@@ -27,7 +27,7 @@ static int _ethernet_wan_available(void) {
 
 static int _arping_gateway(void) {
     int status;
-    nakd_assert((status = nakd_do_command(NAKD_SCRIPT_PATH,
+    nakd_assert((status = nakd_shell_exec(NAKD_SCRIPT_PATH,
                               NULL, GW_ARPING_SCRIPT " %s",
                               nakd_wlan_interface_name())) >= 0);
     return status;
@@ -35,7 +35,7 @@ static int _arping_gateway(void) {
 
 static char *_gateway_ip(void) {
     char *ip = NULL;
-    nakd_assert(nakd_do_command(NAKD_SCRIPT_PATH, &ip, GW_IP_SCRIPT) >= 0);
+    nakd_assert(nakd_shell_exec(NAKD_SCRIPT_PATH, &ip, GW_IP_SCRIPT) >= 0);
     return ip;
 }
 

@@ -8,9 +8,8 @@
 #define NAKD_SCRIPT_PATH "/usr/share/nakd/scripts/util"
 #define NAKD_SCRIPT(filename) NAKD_SCRIPT_PATH filename
 
-int nakd_do_command(const char *cwd, char **output, const char *fmt, ...);
-int nakd_do_command_argv(const char **argv, const char *cwd, char **output);
-json_object *nakd_json_do_command(const char *script, json_object *jcmd);
+int nakd_shell_exec(const char *cwd, char **output, const char *fmt, ...);
+int nakd_shell_exec_argv(const char **argv, const char *cwd, char **output);
 
 struct cmd_shell_spec {
     const char **argv;

@@ -102,7 +102,7 @@ static void log_execve(const char *argv[]) {
     free(execve_log);
 }
 
-int nakd_do_command(const char *cwd, char **output, const char *fmt, ...) {
+int nakd_shell_exec(const char *cwd, char **output, const char *fmt, ...) {
     va_list vl;
     char *args = malloc(NAKD_MAX_ARG_STRLEN);
     nakd_assert(args != NULL);
@@ -114,7 +114,7 @@ int nakd_do_command(const char *cwd, char **output, const char *fmt, ...) {
     const char **argv = (const char **)(build_argv(args));
     nakd_assert(argv != NULL);
 
-    int status = nakd_do_command_argv(argv, cwd, output);
+    int status = nakd_shell_exec_argv(argv, cwd, output);
     free_argv(argv);
     free(args);
     return status;
@@ -122,7 +122,7 @@ int nakd_do_command(const char *cwd, char **output, const char *fmt, ...) {
 
 /* Returns NULL if the command failed.
  */
-int nakd_do_command_argv(const char **argv, const char *cwd, char **output) {
+int nakd_shell_exec_argv(const char **argv, const char *cwd, char **output) {
     pid_t pid;
     int pipe_fd[2];
     char *response = NULL;
@@ -228,7 +228,7 @@ json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {
 
     int status;
     char *output;
-    if ((status = nakd_do_command_argv(argv, spec->cwd, &output)) < 0) {
+    if ((status = nakd_shell_exec_argv(argv, spec->cwd, &output)) < 0) {
         nakd_log(L_NOTICE, "Error while running shell command %s", spec->argv[0]);
         jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR, NULL);
         goto response;

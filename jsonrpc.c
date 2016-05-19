@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 #include <strings.h>
 #include <json-c/json.h>
 #include "jsonrpc.h"
@@ -142,16 +145,10 @@ json_object *nakd_jsonrpc_response_success(json_object *request,
 }
 
 /* message can be NULL */
-json_object *nakd_jsonrpc_response_error(json_object *request,
-                   enum jsonrpc_err ec, const char *message) {
-    json_object *jresp = nakd_jsonrpc_response(request);
-    json_object *jerr = nakd_jsonrpc_error(ec, message);
-    json_object_object_add(jresp, "error", jerr);
-    return jresp;
-}
+static json_object *_jsonrpc_error(enum jsonrpc_err err, const char *fmt,
+                                                          va_list args) {
+    const size_t errstr_len = 4096;
 
-/* message can be NULL */
-json_object *nakd_jsonrpc_error(enum jsonrpc_err err, const char *message) {
     json_object *jerror = json_object_new_object();
     nakd_assert(jerror != NULL);
 
@@ -160,10 +157,34 @@ json_object *nakd_jsonrpc_error(enum jsonrpc_err err, const char *message) {
 
     json_object_object_add(jerror, "code", jcode);
 
-    const char *errstr = message == NULL ? _jsonrpc_errmsg(err) : message;
+    char *errstr;
+    if (fmt == NULL) {
+        errstr = strdup(_jsonrpc_errmsg(err));
+    } else {
+        errstr = malloc(errstr_len);
+        nakd_assert(errstr != NULL);
+
+        vsnprintf(errstr, errstr_len, fmt, args);
+    }
+
     json_object *jmessage = json_object_new_string(errstr);
     nakd_assert(jmessage != NULL);
+    free(errstr);
 
     json_object_object_add(jerror, "message", jmessage);
     return jerror;
+}
+
+/* message can be NULL */
+json_object *nakd_jsonrpc_response_error(json_object *request,
+                  enum jsonrpc_err ec, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    json_object *jresp = nakd_jsonrpc_response(request);
+    json_object *jerr = _jsonrpc_error(ec, fmt, args);
+    json_object_object_add(jresp, "error", jerr);
+
+    va_end(args);
+    return jresp;
 }

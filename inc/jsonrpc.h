@@ -1,5 +1,7 @@
 #ifndef NAKD_JSONRPC_H
 #define NAKD_JSONRPC_H
+#include <stdio.h>
+#include <stdlib.h>
 
 enum jsonrpc_err {
     PARSE_ERROR = -32700,
@@ -24,7 +26,6 @@ json_object *nakd_jsonrpc_response(json_object *request);
 json_object *nakd_jsonrpc_response_success(json_object *request,
                                            json_object *result);
 json_object *nakd_jsonrpc_response_error(json_object *request,
-                    enum jsonrpc_err ec, const char *message);
-json_object *nakd_jsonrpc_error(enum jsonrpc_err err, const char *message);
+                   enum jsonrpc_err ec, const char *fmt, ...);
 
 #endif

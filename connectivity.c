@@ -1,3 +1,8 @@
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <errno.h>
 #include <pthread.h>
 #include <json-c/json.h>
 #include "connectivity.h"
@@ -9,7 +14,10 @@
 #include "module.h"
 #include "workqueue.h"
 #include "shell.h"
+#include "jsonrpc.h"
+#include "command.h"
 
+#define CONNECTIVITY_SCRIPT_PATH(zone) NAKD_SCRIPT_PATH "connectivity/" zone
 #define GW_ARPING_SCRIPT NAKD_SCRIPT("util/arping_gateway.sh")
 #define GW_IP_SCRIPT NAKD_SCRIPT("util/gateway_ip.sh")
 #define CONNECTIVITY_UPDATE_INTERVAL 10000 /* ms */
@@ -144,6 +152,53 @@ static int _connectivity_cleanup(void) {
     return 0;
 }
 
+/* returns 1 if just one script returns with 0 exit status */
+static int _run_connectivity_scripts(const char *dirpath) {
+    int status = 0;
+    DIR *dir = opendir(dirpath);
+
+    if (dir == NULL) {
+        nakd_log(L_CRIT, "Couldn't access %s (opendir(): %s)", dirpath,
+                                                      strerror(errno));
+        return 0;
+    }
+
+    char path[PATH_MAX];
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL) {
+        snprintf(path, sizeof path, "%s/%s", dirpath, de->d_name);
+
+        if (access(path, X_OK))
+            continue;
+
+        if (!nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path)) {
+            status = 1;
+            break;
+        }
+    }
+
+    closedir(dir);
+    return status;
+}
+
+int nakd_local_connectivity(void) {
+    return _arping_gateway();
+}
+
+int nakd_internet_connectivity(void) {
+    if (!nakd_local_connectivity())
+        return 0;
+    return _run_connectivity_scripts(CONNECTIVITY_SCRIPT_PATH("internet"));
+}
+
+enum nakd_connectivity nakd_connectivity(void) {
+    if (nakd_internet_connectivity())
+        return CONNECTIVITY_INTERNET;
+    if (nakd_local_connectivity())
+        return CONNECTIVITY_LOCAL;
+    return CONNECTIVITY_NONE;
+}
+
 static struct nakd_module module_connectivity = {
     .name = "connectivity",
     .deps = (const char *[]){ "workqueue", "event", "timer", "netintf", "wlan",
@@ -153,3 +208,29 @@ static struct nakd_module module_connectivity = {
 };
 
 NAKD_DECLARE_MODULE(module_connectivity);
+
+json_object *cmd_connectivity(json_object *jcmd, void *arg) {
+    json_object *jresponse;
+
+    json_object *jresult = json_object_new_object();
+    json_object *jlocal = json_object_new_boolean(nakd_local_connectivity());
+    json_object *jinternet = json_object_new_boolean(
+                       nakd_internet_connectivity());
+    json_object_object_add(jresult, "local", jlocal);
+    json_object_object_add(jresult, "internet", jinternet);
+
+    return nakd_jsonrpc_response_success(jcmd, jresult);
+}
+
+static struct nakd_command connectivity = {
+    .name = "connectivity",
+    .desc = "Connectivity status - local: gateway, internet: probabilistic"
+                   "based on a group of services that should be reachable "
+                                                  "anywhere in the world.",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"connectivity\", \"params\":"
+                                                           "\"\", \"id\": 42}",
+    .handler = cmd_connectivity,
+    .access = ACCESS_USER,
+    .module = &module_connectivity
+};
+NAKD_DECLARE_COMMAND(connectivity);

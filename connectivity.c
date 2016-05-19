@@ -51,8 +51,11 @@ int nakd_online(void) {
 static void _connectivity_update(void *priv) {
     pthread_mutex_lock(&_connectivity_mutex);
     /* prefer ethernet */
-    if (_ethernet_wan_available() != 0)
-        goto unlock; /* skip if either present or don't know yet */
+    if (_ethernet_wan_available() != 0) {
+        if (!nakd_interface_disabled(NAKD_WLAN))
+            nakd_disable_interface(NAKD_WLAN);
+        goto unlock; 
+    }
 
     nakd_wlan_scan();
     nakd_log(L_DEBUG, "%d wireless networks available.", nakd_wlan_netcount());

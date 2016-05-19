@@ -12,6 +12,7 @@
 #include "nak_uci.h"
 #include "module.h"
 #include "workqueue.h"
+#include "command.h"
 
 #define NETINTF_UBUS_SERVICE "network.device"
 #define NETINTF_UBUS_METHOD "status"
@@ -442,3 +443,14 @@ static struct nakd_module module_netintf = {
 };
 
 NAKD_DECLARE_MODULE(module_netintf);
+
+static struct nakd_command interfaces = {
+    .name = "interfaces",
+    .desc = "Returns current network interface state.",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"interfaces\", \"params\":"
+                                                         "\"\", \"id\": 42}",
+    .handler = cmd_interface_state,
+    .access = ACCESS_USER,
+    .module = &module_netintf
+};
+NAKD_DECLARE_COMMAND(interfaces);

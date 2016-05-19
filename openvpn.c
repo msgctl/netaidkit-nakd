@@ -16,6 +16,7 @@
 #include "log.h"
 #include "jsonrpc.h"
 #include "misc.h"
+#include "command.h"
 
 #define SOCK_PATH "/run/openvpn/openvpn.sock"
 #define CONFIG_PATH "/nak/ovpn/current.ovpn"
@@ -453,3 +454,13 @@ json_object *cmd_openvpn(json_object *jcmd, void *arg) {
 response:
     return jresponse;
 }
+
+static struct nakd_command openvpn = {
+    .name = "openvpn",
+    .desc = "Manage OpenVPN daemon.",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"openvpn\", \"params\":"
+                "\"either of: start, stop, restart, state\", \"id\": 42}",
+    .handler = cmd_openvpn,
+    .access = ACCESS_ROOT,
+};
+NAKD_DECLARE_COMMAND(openvpn);

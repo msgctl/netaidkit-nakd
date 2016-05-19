@@ -1,16 +1,31 @@
 #ifndef NAKD_COMMAND_H
 #define NAKD_COMMAND_H
 #include <json-c/json.h>
+#include "module.h"
 
-typedef json_object *(*cmd_handler)(json_object *jcmd, void *priv);
+typedef json_object *(*nakd_cmd_handler)(json_object *jcmd, void *priv);
 
-typedef struct {
-    char *name;
-    cmd_handler handler;
+enum nakd_access_level {
+    ACCESS_ROOT,
+    ACCESS_USER
+};
+
+struct nakd_command {
+    const char *name;
+    const char *desc;
+    const char *usage;
+    nakd_cmd_handler handler;
     void *priv;
-} command;
+    enum nakd_access_level access;
 
-command *nakd_get_command(const char *cmd_name);
-json_object *nakd_call_command(const char *cmd_name, json_object *jcmd);
+    struct nakd_module *module;
+};
+
+struct nakd_command *nakd_get_command(const char *name);
+json_object *nakd_call_command(const char *name, json_object *jcmd);
+
+#define NAKD_DECLARE_COMMAND(desc) \
+    struct nakd_command * desc ## _ptr \
+        __attribute__ ((section (".command"))) = &desc 
 
 #endif

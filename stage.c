@@ -13,6 +13,7 @@
 #include "nak_uci.h"
 #include "module.h"
 #include "connectivity.h"
+#include "event.h"
 
 #define NAKD_STAGE_SCRIPT_PATH NAKD_SCRIPT_PATH "stage/"
 #define NAKD_STAGE_SCRIPT_FMT (NAKD_STAGE_SCRIPT_PATH "%s" ".sh")
@@ -239,9 +240,7 @@ static int _nakd_online(struct stage *stage) {
 
 static int _stage_init(void) {
     pthread_mutex_init(&_stage_mutex, NULL);
-    if (_current_stage == NULL)
-        return nakd_stage_spec(_default_stage);
-    return 0;
+    return nakd_stage_spec(_default_stage);
 }
 
 static int _stage_cleanup(void) {
@@ -281,7 +280,7 @@ int nakd_stage(const char *stage_name) {
     return 1;
 }
 
-json_object *cmd_stage(json_object *jcmd, void *param) {
+json_object *cmd_stage_set(json_object *jcmd, void *param) {
     json_object *jresponse;
 
     nakd_log_execution_point();
@@ -313,9 +312,20 @@ response:
 static struct nakd_module module_stage = {
     .name = "stage",
     .deps = (const char *[]){ "workqueue", "connectivity", "notification",
-                                                                   NULL },
+                                                "event", "config", NULL },
     .init = _stage_init,
     .cleanup = _stage_cleanup
 };
 
 NAKD_DECLARE_MODULE(module_stage);
+
+static struct nakd_command stage_set = {
+    .name = "stage_set",
+    .desc = "Requests change of NAK stage.",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"stage_set\", \"params\":"
+                                                     "\"vpn\", \"id\": 42}",
+    .handler = cmd_stage_set,
+    .access = ACCESS_USER,
+    .module = &module_stage
+};
+NAKD_DECLARE_COMMAND(stage_set);

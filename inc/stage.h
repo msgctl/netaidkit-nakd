@@ -18,6 +18,7 @@ struct stage {
     const char *name;
     const char *desc;
     const struct stage_step *work;
+    int online;
 
     struct nakd_uci_hook *hooks;
 
@@ -25,9 +26,9 @@ struct stage {
     char *err;
 };
 
+json_object *cmd_stage_set(json_object *jcmd, void *param);
+
 int nakd_stage_spec(struct stage *stage);
 int nakd_stage(const char *stage_name);
-
-json_object *cmd_stage(json_object *jcmd, void *);
 
 #endif

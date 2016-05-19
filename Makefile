@@ -3,6 +3,7 @@ BUILD = .
 SRC = $(wildcard *.c)
 OBJ = $(patsubst %.c, $(BUILD)/%.o, $(SRC))
 DEPEND = $(patsubst %.c, $(BUILD)/%.d, $(SRC))
+LDSCRIPT = $(patsubst %.ld, -T%.ld, $(wildcard *.ld))
 
 .PRECIOUS: $(DEPEND)
 
@@ -18,7 +19,7 @@ all: $(TARGETS)
 -include $(DEPEND)
 
 $(BUILD)/nakd: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) -Tmodule.ld -o $@
+	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) $(LDSCRIPT) -o $@
 
 $(BUILD)/%.d: %.c
 	$(CC) $(CFLAGS) -MM $< -o $(BUILD)/$*.d

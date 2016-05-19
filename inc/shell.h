@@ -5,11 +5,13 @@
 
 #define MAX_SHELL_RESULT_LEN 262144
 
-#define NAKD_SCRIPT_PATH "/usr/share/nakd/scripts/util"
+#define NAKD_SCRIPT_PATH "/usr/share/nakd/scripts/"
 #define NAKD_SCRIPT(filename) NAKD_SCRIPT_PATH filename
 
 int nakd_shell_exec(const char *cwd, char **output, const char *fmt, ...);
 int nakd_shell_exec_argv(const char **argv, const char *cwd, char **output);
+
+int nakd_shell_run_scripts(const char *dirpath);
 
 struct cmd_shell_spec {
     const char **argv;

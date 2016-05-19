@@ -5,6 +5,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <errno.h>
 #include <json-c/json.h>
 #include "shell.h"
 #include "request.h"
@@ -196,6 +199,30 @@ ret:
         free(response);
     }
     return status;
+}
+
+int nakd_shell_run_scripts(const char *dirpath) {
+    DIR *dir = opendir(dirpath);
+
+    if (dir == NULL) {
+        nakd_log(L_CRIT, "Couldn't access %s (opendir(): %s)", dirpath,
+                                                      strerror(errno));
+        return 1;
+    }
+
+    char path[PATH_MAX];
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL) {
+        snprintf(path, sizeof path, "%s/%s", dirpath, de->d_name);
+
+        if (access(path, X_OK))
+            continue;
+
+        nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path);
+    }
+
+    closedir(dir);
+    return 0;
 }
 
 json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {

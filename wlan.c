@@ -17,8 +17,7 @@
 
 #define WLAN_NETWORK_LIST_PATH "/etc/nakd/wireless_networks"
 
-#define WLAN_UPDATE_SCRIPT NAKD_SCRIPT("wlan_restart.sh")
-#define WLAN_SCAN_SCRIPT NAKD_SCRIPT("wlan_scan.sh")
+#define WLAN_UPDATE_SCRIPT NAKD_SCRIPT("util/wlan_restart.sh")
 
 #define WLAN_SCAN_SERVICE "iwinfo"
 #define WLAN_SCAN_METHOD "scan"

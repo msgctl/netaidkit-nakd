@@ -10,8 +10,8 @@
 #include "workqueue.h"
 #include "shell.h"
 
-#define GW_ARPING_SCRIPT NAKD_SCRIPT("arping_gateway.sh")
-#define GW_IP_SCRIPT NAKD_SCRIPT("gateway_ip.sh")
+#define GW_ARPING_SCRIPT NAKD_SCRIPT("util/arping_gateway.sh")
+#define GW_IP_SCRIPT NAKD_SCRIPT("util/gateway_ip.sh")
 #define CONNECTIVITY_UPDATE_INTERVAL 10000 /* ms */
 
 static pthread_mutex_t _connectivity_mutex;

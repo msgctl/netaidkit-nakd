@@ -25,6 +25,13 @@
 static pthread_mutex_t _connectivity_mutex;
 static struct nakd_timer *_connectivity_update_timer;
 
+#define CONNECTIVITY_STRING_ENTRY(state) [state] = #state
+const char *nakd_connectivity_string[] = {
+    CONNECTIVITY_STRING_ENTRY(CONNECTIVITY_NONE),
+    CONNECTIVITY_STRING_ENTRY(CONNECTIVITY_LOCAL),
+    CONNECTIVITY_STRING_ENTRY(CONNECTIVITY_INTERNET),
+};
+
 static int _ethernet_wan_available(void) {
     if (!nakd_iface_state_available())
         return -1;

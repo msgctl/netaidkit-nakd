@@ -17,6 +17,7 @@ struct nakd_config_default {
 } static _defaults[] = {
     { "LED1_path", "/sys/class/leds/gl-connect:green:lan/brightness" },
     { "LED2_path", "/sys/class/leds/gl-connect:red:wlan/brightness" },
+    { "stage", "reset" },
     {}
 };
 

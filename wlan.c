@@ -638,6 +638,18 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
     json_object *jparams;
 
     pthread_mutex_lock(&_wlan_mutex);
+
+    json_object *jstore = NULL;
+    json_object_object_get_ex(jparams, "store", &jstore);
+    if (jstore != NULL) {
+       if (json_object_get_type(jstore) != json_type_boolean) {
+            jresponse = nakd_jsonrpc_response_error(jcmd, INVALID_REQUEST,
+                       "Invalid request - \"store\" parameter must be of "
+                                                          "boolean type");
+            goto unlock;
+       }
+    }
+
     if (_wireless_networks == NULL) {
         jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
                            "Internal error - no cached scan results,"
@@ -661,22 +673,13 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
         goto unlock;
     }
 
-    json_object *jstore = NULL;
-    json_object_object_get_ex(jparams, "store", &jstore);
     if (jstore != NULL) {
-       if (json_object_get_type(jstore) != json_type_boolean) {
-            jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
-                     "Internal error - couldn't connect to the network");
-            goto unlock;
-       }
-
-       int store = json_object_get_boolean(jstore); 
-       if (store) {
+       if (json_object_get_boolean(jstore)) {
            if (__store_network(jparams, key)) {
                 jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
                      "Internal error - couldn't store network credentials.");
                 goto unlock;
-            }
+           }
        }
     }
 

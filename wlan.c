@@ -311,8 +311,10 @@ static void _wlan_scan_iwinfo_work(void *priv) {
 
     scan->iwctx = iwinfo_backend(iwctx_ifname);
     if (scan->iwctx == NULL) {
-        nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
-                                                         iwctx_ifname);
+        nakd_log(L_WARNING, "Couldn't initialize iwinfo backend (intf: %s)",
+                                                              iwctx_ifname);
+        scan->status = 1;
+        return;
     }
 
     /*

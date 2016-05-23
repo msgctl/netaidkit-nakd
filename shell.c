@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
 #include <json-c/json.h>
@@ -215,8 +216,18 @@ int nakd_shell_run_scripts(const char *dirpath) {
     while ((de = readdir(dir)) != NULL) {
         snprintf(path, sizeof path, "%s/%s", dirpath, de->d_name);
 
-        if (access(path, X_OK))
+        struct stat st;
+        nakd_assert(stat(path, &st) != -1);
+
+        if (st.st_mode & S_IFMT != S_IFREG && st.st_mode & S_IFMT != S_IFLNK) {
+            nakd_log(L_DEBUG, "%s isn't a symlink nor regular file, continuing.");
             continue;
+        }
+
+        if (access(path, X_OK)) {
+            nakd_log(L_DEBUG, "%s isn't an executable, continuing.", path);
+            continue;
+        }
 
         nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path);
     }

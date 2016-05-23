@@ -233,6 +233,19 @@ static struct stage *_stages[] = {
     NULL
 };
 
+static struct led_condition _led_stage_working = {
+    .name = "stage-working",
+    .priority = LED_PRIORITY_DEFAULT,
+    .states = (struct led_state[]){
+        { "LED1_path", NULL, 1 },
+        { "LED2_path", NULL, 1 },
+        {}
+    },
+    .blink.on = 1,
+    .blink.interval = 100,
+    .blink.count = -1, /*infinite */
+};
+
 static struct stage *_current_stage = NULL;
 static struct stage *_requested_stage = NULL;
 
@@ -311,6 +324,7 @@ static void _stage_spec(void *priv) {
 
     nakd_log(L_INFO, "Stage %s", stage->name);
     pthread_mutex_lock(&_stage_mutex);
+    nakd_led_condition_add(&_led_stage_working);
     stage->err = NULL;
     for (const struct stage_step *step = stage->work; step->name != NULL;
                                                                 step++) {
@@ -319,15 +333,16 @@ static void _stage_spec(void *priv) {
             goto unlock; /* stage->err set in step->work() */
     }
 
-    if (previous != NULL)
-        nakd_led_condition_remove(previous->led.name);
-    nakd_led_condition_add(&stage->led);
-
     _current_stage = stage;
     _current_stage->err = NULL;
     nakd_log(L_INFO, "Stage %s: done!", stage->name);
 
+    if (previous != NULL)
+        nakd_led_condition_remove(previous->led.name);
+    nakd_led_condition_add(&stage->led);
+
 unlock:
+    nakd_led_condition_remove(_led_stage_working.name);
     pthread_mutex_unlock(&_stage_mutex);
 }
 

@@ -286,7 +286,7 @@ cleanup:
 
 static int _wlan_scan_rpcd(void) {
     json_object *jparam = json_object_new_object();
-    json_object *jdevice = json_object_new_string(_wlan_interface_name);
+    json_object *jdevice = json_object_new_string(_ap_interface_name);
     json_object_object_add(jparam, "device", jdevice);
     const char *param = json_object_get_string(jparam);
 
@@ -304,13 +304,14 @@ struct iwinfo_scan_priv {
 };
 
 static void _wlan_scan_iwinfo_work(void *priv) {
+    const char *iwctx_ifname = _ap_interface_name;
     struct iwinfo_scan_priv *scan = priv;
     scan->status = 0;
 
-    scan->iwctx = iwinfo_backend(_wlan_interface_name);
+    scan->iwctx = iwinfo_backend(iwctx_ifname);
     if (scan->iwctx == NULL) {
         nakd_terminate("Couldn't initialize iwinfo backend (intf: %s)",
-                                                 _wlan_interface_name);
+                                                         iwctx_ifname);
     }
 
     /*
@@ -322,8 +323,8 @@ static void _wlan_scan_iwinfo_work(void *priv) {
     scan->networks = malloc(IWINFO_BUFSIZE);
     nakd_assert(scan->networks != NULL); 
     nakd_log(L_DEBUG, "Initialized libiwinfo context, calling iwctx->scanlist().");
-    if (scan->iwctx->scanlist(_wlan_interface_name, (void *)(scan->networks),
-                                                                     &len)) {
+    if (scan->iwctx->scanlist(iwctx_ifname, (void *)(scan->networks),
+                                                             &len)) {
         nakd_log(L_CRIT, "Scanning not possible");
         scan->status = 1;
         return;

@@ -24,6 +24,8 @@ struct nakd_command {
 struct nakd_command *nakd_get_command(const char *name);
 json_object *nakd_call_command(const char *name, json_object *jcmd);
 
+json_object *cmd_list(json_object *jcmd, void *arg);
+
 #define NAKD_DECLARE_COMMAND(desc) \
     struct nakd_command * desc ## _ptr \
         __attribute__ ((section (".command"))) = &desc 

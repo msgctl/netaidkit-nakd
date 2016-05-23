@@ -207,8 +207,7 @@ static struct nakd_command connectivity = {
     .desc = "Connectivity status - local: gateway, internet: probabilistic"
                    "based on a group of services that should be reachable "
                                                   "anywhere in the world.",
-    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"connectivity\", \"params\":"
-                                                           "\"\", \"id\": 42}",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"connectivity\", \"id\": 42}",
     .handler = cmd_connectivity,
     .access = ACCESS_USER,
     .module = &module_connectivity

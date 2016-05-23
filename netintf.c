@@ -447,8 +447,7 @@ NAKD_DECLARE_MODULE(module_netintf);
 static struct nakd_command interfaces = {
     .name = "interfaces",
     .desc = "Returns current network interface state.",
-    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"interfaces\", \"params\":"
-                                                         "\"\", \"id\": 42}",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"interfaces\", \"id\": 42}",
     .handler = cmd_interface_state,
     .access = ACCESS_USER,
     .module = &module_netintf

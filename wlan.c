@@ -713,8 +713,7 @@ NAKD_DECLARE_COMMAND(wlan_connect);
 static struct nakd_command wlan_scan = {
     .name = "wlan_scan",
     .desc = "Triggers wireless network scan. Does not return results.",
-    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"wlan_scan\", \"params\":"
-                                                        "\"\", \"id\": 42}",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"wlan_scan\", \"id\": 42}",
     .handler = cmd_wlan_scan,
     .access = ACCESS_ROOT,
     .module = &module_wlan
@@ -724,8 +723,7 @@ NAKD_DECLARE_COMMAND(wlan_scan);
 static struct nakd_command wlan_list = {
     .name = "wlan_list",
     .desc = "Returns cached wireless network list.",
-    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"wlan_list\", \"params\":"
-                                                        "\"\", \"id\": 42}",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"wlan_list\", \"id\": 42}",
     .handler = cmd_wlan_list,
     .access = ACCESS_USER,
     .module = &module_wlan
@@ -735,8 +733,7 @@ NAKD_DECLARE_COMMAND(wlan_list);
 static struct nakd_command wlan_list_stored = {
     .name = "wlan_list_stored",
     .desc = "Returns a list of known networks.",
-    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"wlan_list_stored\", \"params\":"
-                                                               "\"\", \"id\": 42}",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"wlan_list_stored\", \"id\": 42}",
     .handler = cmd_wlan_list_stored,
     .access = ACCESS_USER,
     .module = &module_wlan

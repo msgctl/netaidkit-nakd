@@ -587,7 +587,8 @@ json_object *cmd_wlan_list(json_object *jcmd, void *arg) {
     pthread_mutex_lock(&_wlan_mutex);
     if (_wireless_networks == NULL) {
         jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
-                          "Internal error - please try again later");
+                           "Internal error - no cached scan results,"
+                                           " call wlan_scan first.");
         goto unlock;
     }
 
@@ -638,7 +639,8 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
     pthread_mutex_lock(&_wlan_mutex);
     if (_wireless_networks == NULL) {
         jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
-                          "Internal error - please try again later");
+                           "Internal error - no cached scan results,"
+                                           " call wlan_scan first.");
         goto unlock;
     }
 

@@ -14,6 +14,7 @@
 #include "netintf.h"
 #include "shell.h"
 #include "workqueue.h"
+#include "event.h"
 
 #define WLAN_NETWORK_LIST_PATH "/etc/nakd/wireless_networks"
 
@@ -667,12 +668,6 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
     if (ssid == NULL || key == NULL)
         goto params;
 
-    if (_wlan_connect(jparams)) {
-        jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
-                 "Internal error - couldn't connect to the network");
-        goto unlock;
-    }
-
     if (jstore != NULL) {
        if (json_object_get_boolean(jstore)) {
            if (__store_network(jparams, key)) {
@@ -682,6 +677,14 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
            }
        }
     }
+
+    if (_wlan_connect(jparams)) {
+        jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
+                 "Internal error - couldn't connect to the network");
+        goto unlock;
+    }
+
+    nakd_event_push(CONNECTIVITY_OK);
 
     json_object *jresult = json_object_new_string("OK");
     jresponse = nakd_jsonrpc_response_success(jcmd, jresult);

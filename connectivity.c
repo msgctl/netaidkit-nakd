@@ -159,37 +159,19 @@ static int _connectivity_cleanup(void) {
     return 0;
 }
 
+static int _run_scripts_cb(const char *path, void *priv) {
+    /* negated exit code - stop traversal if just one script exited with 0 */
+    return !nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path);
+}
+
 /* returns 1 if just one script returns with 0 exit status */
 static int _run_connectivity_scripts(const char *dirpath) {
-    int status = 0;
-    DIR *dir = opendir(dirpath);
-
-    if (dir == NULL) {
-        nakd_log(L_CRIT, "Couldn't access %s (opendir(): %s)", dirpath,
-                                                      strerror(errno));
-        return 0;
-    }
-
-    char path[PATH_MAX];
-    struct dirent *de;
-    while ((de = readdir(dir)) != NULL) {
-        snprintf(path, sizeof path, "%s/%s", dirpath, de->d_name);
-
-        if (access(path, X_OK))
-            continue;
-
-        if (!nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path)) {
-            status = 1;
-            break;
-        }
-    }
-
-    closedir(dir);
-    return status;
+    /* will return 0 if every script failed */
+    return nakd_traverse_directory(dirpath, _run_scripts_cb, NULL);
 }
 
 int nakd_local_connectivity(void) {
-    return _arping_gateway();
+    return !_arping_gateway();
 }
 
 int nakd_internet_connectivity(void) {

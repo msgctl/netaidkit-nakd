@@ -202,7 +202,19 @@ ret:
     return status;
 }
 
+static int _run_scripts_cb(const char *path, void *priv) {
+    /* disregard positive exit code */
+    nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path);
+    /* positive return status would stop directory traversal */
+    return 0;
+}
+
 int nakd_shell_run_scripts(const char *dirpath) {
+    return nakd_traverse_directory(dirpath, _run_scripts_cb, NULL);
+}
+
+int nakd_traverse_directory(const char *dirpath, nakd_traverse_cb cb,
+                                                        void *priv) {
     DIR *dir = opendir(dirpath);
 
     if (dir == NULL) {
@@ -211,6 +223,7 @@ int nakd_shell_run_scripts(const char *dirpath) {
         return 1;
     }
 
+    int status = 0;
     char path[PATH_MAX];
     struct dirent *de;
     while ((de = readdir(dir)) != NULL) {
@@ -218,9 +231,9 @@ int nakd_shell_run_scripts(const char *dirpath) {
 
         struct stat st;
         nakd_assert(stat(path, &st) != -1);
-
         if (st.st_mode & S_IFMT != S_IFREG && st.st_mode & S_IFMT != S_IFLNK) {
-            nakd_log(L_DEBUG, "%s isn't a symlink nor regular file, continuing.");
+            nakd_log(L_DEBUG, "%s isn't a symlink nor regular file, "
+                                                "continuing.", path);
             continue;
         }
 
@@ -229,11 +242,12 @@ int nakd_shell_run_scripts(const char *dirpath) {
             continue;
         }
 
-        nakd_shell_exec(NAKD_SCRIPT_PATH, NULL, path);
+        if (status = cb(path, priv))
+            break; 
     }
 
     closedir(dir);
-    return 0;
+    return status;
 }
 
 json_object *cmd_shell(json_object *jcmd, struct cmd_shell_spec *spec) {

@@ -11,6 +11,9 @@
 int nakd_shell_exec(const char *cwd, char **output, const char *fmt, ...);
 int nakd_shell_exec_argv(const char **argv, const char *cwd, char **output);
 
+typedef int (*nakd_traverse_cb)(const char *path, void *priv);
+int nakd_traverse_directory(const char *path, nakd_traverse_cb cb, void *priv);
+
 int nakd_shell_run_scripts(const char *dirpath);
 
 struct cmd_shell_spec {

@@ -28,6 +28,13 @@ json_object *nakd_call_command(const char *cmd_name, json_object *jcmd) {
         return NULL;
     }
 
+    if (cmd->module != NULL) {
+        if (nakd_module_state(cmd->module) != NAKD_INITIALIZED)
+            return nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
+                  "Internal error - module %s not initialized yet, "
+                            "please try later.", cmd->module->name);
+    }
+
     return cmd->handler(jcmd, cmd->priv);
 }
 

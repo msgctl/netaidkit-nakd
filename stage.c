@@ -62,6 +62,16 @@ static struct stage _stage_reset = {
     },
     .hooks = _firewall_hooks,
     .connectivity_level = CONNECTIVITY_NONE,
+    .led = {
+        .name = "stage_reset",
+        .priority = LED_PRIORITY_NOTIFICATION,
+        .states = (struct led_state[]){
+            { "LED1_path", NULL, 1 },
+            { "LED2_path", NULL, 1 },
+            {}
+        },
+        .blink.on = 0,
+    },
 
     .err = NULL
 };
@@ -89,6 +99,16 @@ static struct stage _stage_default = {
     },
     .hooks = _firewall_hooks,
     .connectivity_level = CONNECTIVITY_NONE,
+    .led = {
+        .name = "stage_default",
+        .priority = LED_PRIORITY_NOTIFICATION,
+        .states = (struct led_state[]){
+            { "LED1_path", NULL, 1 },
+            { "LED2_path", NULL, 1 },
+            {}
+        },
+        .blink.on = 0,
+    },
 
     .err = NULL
 };
@@ -116,6 +136,16 @@ static struct stage _stage_vpn = {
     },
     .hooks = _firewall_hooks,
     .connectivity_level = CONNECTIVITY_LOCAL,
+    .led = {
+        .name = "stage_vpn",
+        .priority = LED_PRIORITY_NOTIFICATION,
+        .states = (struct led_state[]){
+            { "LED1_path", NULL, 1 },
+            { "LED2_path", NULL, 0 },
+            {}
+        },
+        .blink.on = 0,
+    },
 
     .err = NULL
 };
@@ -143,6 +173,16 @@ static struct stage _stage_tor = {
     },
     .hooks = _firewall_hooks,
     .connectivity_level = CONNECTIVITY_LOCAL,
+    .led = {
+        .name = "stage_tor",
+        .priority = LED_PRIORITY_NOTIFICATION,
+        .states = (struct led_state[]){
+            { "LED1_path", NULL, 1 },
+            { "LED2_path", NULL, 0 },
+            {}
+        },
+        .blink.on = 0,
+    },
 
     .err = NULL
 };
@@ -170,6 +210,16 @@ static struct stage _stage_online = {
     },
     .hooks = _firewall_hooks,
     .connectivity_level = CONNECTIVITY_LOCAL,
+    .led = {
+        .name = "stage_online",
+        .priority = LED_PRIORITY_NOTIFICATION,
+        .states = (struct led_state[]){
+            { "LED1_path", NULL, 0 },
+            { "LED2_path", NULL, 1 },
+            {}
+        },
+        .blink.on = 0,
+    },
 
     .err = NULL
 };
@@ -247,10 +297,10 @@ static int _run_uci_hooks(struct stage *stage) {
 
 static void _stage_spec(void *priv) {
     struct stage *stage = *(struct stage **)(priv);
+    struct stage *previous = _current_stage;
 
     enum nakd_connectivity current_connectivity = nakd_connectivity();
     if ((int)(current_connectivity) < (int)(stage->connectivity_level)) {
-        /* wait for CONNECTIVITY_OK event */
 
         nakd_log(L_INFO, "Insufficient connectivity level for stage %s. "
           "(current: %s, required: %s) - change postponed.", stage->name,
@@ -268,6 +318,10 @@ static void _stage_spec(void *priv) {
         if (step->work(stage))
             goto unlock; /* stage->err set in step->work() */
     }
+
+    if (previous != NULL)
+        nakd_led_condition_remove(previous->led.name);
+    nakd_led_condition_add(&stage->led);
 
     _current_stage = stage;
     _current_stage->err = NULL;

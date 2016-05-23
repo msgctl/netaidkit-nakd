@@ -4,6 +4,7 @@
 #include "nak_uci.h"
 #include "hooks.h"
 #include "connectivity.h"
+#include "led.h"
 
 struct stage;
 typedef int (*stage_work)(struct stage *stage);
@@ -19,6 +20,7 @@ struct stage {
     const char *desc;
     const struct stage_step *work;
     enum nakd_connectivity connectivity_level;
+    struct led_condition led;
 
     struct nakd_uci_hook *hooks;
 

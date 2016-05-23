@@ -10,8 +10,6 @@ enum nakd_connectivity {
 
 extern const char *nakd_connectivity_string[];
 
-int nakd_online(void);
-
 int nakd_local_connectivity(void);
 int nakd_internet_connectivity(void);
 enum nakd_connectivity nakd_connectivity(void);

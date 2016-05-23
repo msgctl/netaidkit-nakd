@@ -25,7 +25,8 @@ json_object *nakd_call_command(const char *cmd_name, json_object *jcmd) {
     struct nakd_command *cmd = nakd_get_command(cmd_name);
     if (cmd == NULL) {
         nakd_log(L_NOTICE, "Couldn't find command %s.", cmd_name);
-        return NULL;
+        return nakd_jsonrpc_response_error(jcmd, INVALID_REQUEST,
+                           "Invalid request - no such command.");
     }
 
     if (cmd->module != NULL) {

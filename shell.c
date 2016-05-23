@@ -231,7 +231,7 @@ int nakd_traverse_directory(const char *dirpath, nakd_traverse_cb cb,
 
         struct stat st;
         nakd_assert(stat(path, &st) != -1);
-        if (st.st_mode & S_IFMT != S_IFREG && st.st_mode & S_IFMT != S_IFLNK) {
+        if (!S_ISREG(st.st_mode) && !S_ISLNK(st.st_mode)) {
             nakd_log(L_DEBUG, "%s isn't a symlink nor regular file, "
                                                 "continuing.", path);
             continue;

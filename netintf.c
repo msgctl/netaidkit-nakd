@@ -417,12 +417,8 @@ json_object *cmd_interface_state(json_object *jcmd, void *arg) {
             json_object_object_get_ex(_current_netintf_state, intf->name,
                                                                 &jstate);
         if (jstate == NULL) {
-            nakd_log(L_CRIT, "There's no %s interface in current interface "
-                                  "status.", nakd_interface_type[intf->id]);
-            jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
-                              "Internal error - please try again later");
-            json_object_put(jresult);
-            goto unlock;
+            nakd_log(L_DEBUG, "There's no %s interface in current interface "
+                       "status, continuing.", nakd_interface_type[intf->id]);
         }
 
         json_object_object_add(jresult, nakd_interface_type[intf->id],

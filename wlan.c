@@ -168,8 +168,8 @@ static json_object *_create_network_entry(json_object *jnetwork, const char *key
     json_object *jkey = json_object_new_string(key);
 
     json_object *jentry = json_object_new_object(); 
-    json_object_object_add(jnetwork, "ssid", jssid);
-    json_object_object_add(jnetwork, "key", jkey);
+    json_object_object_add(jentry, "ssid", jssid);
+    json_object_object_add(jentry, "key", jkey);
     return jentry;
 }
 

@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <getopt.h>
 #include "log.h"
 #include "nak_signal.h"
 #include "module.h"
@@ -40,11 +41,27 @@ static int _write_pid(char *pid_path) {
     return fd;
 }
 
+static void _get_args(int argc, char *argv[]) {
+    static struct option long_options[] = {
+        {"stderr", no_argument, 0, 0},
+        {}
+    };
+
+    int index;
+    while (getopt_long(argc, argv, "", long_options, &index) != -1) {
+        if (!strcmp(long_options[index].name, "stderr")) {
+            nakd_use_syslog(0);
+            break;
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     int pid_fd;
 
+    _get_args(argc, argv);    
+
     nakd_log_init();
-    nakd_use_syslog(0);
 
     /* Check if nakd is already running. */
     if ((pid_fd = _write_pid(PID_PATH)) == -1)

@@ -15,6 +15,7 @@
 #include "shell.h"
 #include "workqueue.h"
 #include "event.h"
+#include "iwinfo_cli.h"
 
 #define WLAN_NETWORK_LIST_PATH "/etc/nakd/wireless_networks"
 
@@ -343,8 +344,42 @@ static void _wlan_scan_iwinfo_work(void *priv) {
     for (struct iwinfo_scanlist_entry *e = scan->networks;
                         e < scan->networks + count; e++) {
         json_object *jnetwork = json_object_new_object();
+
         json_object *jssid = json_object_new_string(e->ssid);
         json_object_object_add(jnetwork, "ssid", jssid); 
+
+        json_object *jbssid = json_object_new_string(e->mac);
+        json_object_object_add(jnetwork, "bssid", jbssid);
+
+        json_object *jchannel;
+        if (e->channel > 0)
+            jchannel = json_object_new_int(e->channel);
+        else
+            jchannel = json_object_new_string("unknown");
+        json_object_object_add(jnetwork, "channel", jchannel); 
+
+        json_object *jquality;
+        if (e->quality > 0)
+            jquality = json_object_new_int(e->quality);
+        else
+            jquality = json_object_new_string("unknown");
+        json_object_object_add(jnetwork, "quality", jquality);
+
+        json_object *jquality_max;
+        if (e->quality_max > 0)
+            jquality_max = json_object_new_int(e->quality_max);
+        else
+            jquality_max = json_object_new_string("unknown");
+        json_object_object_add(jnetwork, "quality_max", jquality_max);
+
+        json_object *jsignal = json_object_new_string(format_signal(
+                                                e->signal - 0x100));
+        json_object_object_add(jnetwork, "signal", jsignal);
+
+        json_object *jencryption = json_object_new_string(format_encryption(
+                                                               &e->crypto));
+        json_object_object_add(jnetwork, "encryption", jencryption);
+
         json_object_array_add(jresults, jnetwork);
     }
 

@@ -95,21 +95,11 @@ static int __save_stored_networks(void) {
 }
 
 const char *nakd_net_key(json_object *jnetwork) {
-    json_object *jkey = NULL;
-    json_object_object_get_ex(jnetwork, "key", &jkey);
-    if (jkey == NULL || json_object_get_type(jkey) != json_type_string)
-        return NULL;
-
-    return json_object_get_string(jkey);
+    return nakd_json_get_string(jnetwork, "key");
 }
 
 const char *nakd_net_ssid(json_object *jnetwork) {
-    json_object *jssid = NULL;
-    json_object_object_get_ex(jnetwork, "ssid", &jssid);
-    if (jssid == NULL || json_object_get_type(jssid) != json_type_string)
-        return NULL;
-
-    return json_object_get_string(jssid);
+    return nakd_json_get_string(jnetwork, "ssid");
 }
 
 static json_object *__get_stored_network(const char *ssid) {
@@ -305,6 +295,35 @@ struct iwinfo_scan_priv {
     int status;
 };
 
+static const char *_iwinfo_enc_format_uci(struct iwinfo_crypto_entry *c) {
+    /* based on libiwinfo implementation */
+   	if (!c)
+	{
+        return "unknown";
+	}
+	else if (c->enabled)
+	{
+		/* WEP */
+		if (c->auth_algs && !c->wpa_version)
+		{
+            return "wep";
+		}
+		/* WPA */
+		else if (c->wpa_version)
+		{
+			switch (c->wpa_version) {
+				case 3:
+                    return "psk-mixed";
+				case 2:
+                    return "psk2";
+				case 1:
+                    return "psk";
+			}
+		}
+	}
+    return "none";
+}
+
 static void _wlan_scan_iwinfo_work(void *priv) {
     const char *iwctx_ifname = _ap_interface_name;
     struct iwinfo_scan_priv *scan = priv;
@@ -376,8 +395,12 @@ static void _wlan_scan_iwinfo_work(void *priv) {
                                                 e->signal - 0x100));
         json_object_object_add(jnetwork, "signal", jsignal);
 
-        json_object *jencryption = json_object_new_string(format_encryption(
-                                                               &e->crypto));
+        json_object *jencdesc = json_object_new_string(format_encryption(
+                                                            &e->crypto));
+        json_object_object_add(jnetwork, "encryption_desc", jencdesc);
+
+        json_object *jencryption = json_object_new_string(
+                      _iwinfo_enc_format_uci(&e->crypto));
         json_object_object_add(jnetwork, "encryption", jencryption);
 
         json_object_array_add(jresults, jnetwork);
@@ -436,9 +459,19 @@ int nakd_wlan_scan(void) {
     _wlan_scan_iwinfo();
 }
 
-static const char *_get_encryption(json_object *jnetwork) {
-    /* TODO */
-    return "psk2";
+const char *nakd_net_encryption(json_object *jnetwork) {
+    return nakd_json_get_string(jnetwork, "encryption");
+}
+
+int nakd_net_disabled(json_object *jnetwork) {
+    json_object *jdisabled = NULL;
+    json_object_object_get_ex(jnetwork, "disabled", &jdisabled);
+    if (jdisabled != NULL) {
+        if (json_object_get_type(jdisabled) != json_type_int)
+            return -1;
+        return json_object_get_int(jdisabled);
+    }
+    return 0;   
 }
 
 static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
@@ -470,7 +503,7 @@ static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
     };
     nakd_assert(!uci_set(ctx, &key_ptr));
 
-    const char *encryption = _get_encryption(jnetwork);
+    const char *encryption = nakd_net_encryption(jnetwork);
     struct uci_ptr enc_ptr = {
         .package = pkg_name,
         .section = section_name,
@@ -479,11 +512,12 @@ static int _update_wlan_config_ssid(struct uci_option *option, void *priv) {
     };
     nakd_assert(!uci_set(ctx, &enc_ptr));
 
+    int disabled = nakd_net_disabled(jnetwork);
     struct uci_ptr disabled_ptr = {
         .package = pkg_name,
         .section = section_name,
         .option = "disabled",
-        .value = "0"
+        .value = disabled ? "1" : "0"
     };
     nakd_assert(!uci_set(ctx, &disabled_ptr));
     return 0;
@@ -557,6 +591,22 @@ static int _wlan_connect(json_object *jnetwork) {
     }
 
     __swap_current_network(jnetwork);
+    return _reload_wireless_config();
+}
+
+static int _validate_ap_config(json_object *jnetwork) {
+    return nakd_net_key(jnetwork) == NULL ||
+           nakd_net_ssid(jnetwork) == NULL ||
+           nakd_net_encryption(jnetwork) == NULL ||
+           nakd_net_disabled(jnetwork) == -1;
+}
+
+static int _configure_ap(json_object *jnetwork) {
+    /* Continue if exactly one UCI section was found and updated. */
+    if (nakd_update_iface_config(NAKD_AP, _update_wlan_config_ssid,
+                                                  jnetwork) != 1) {
+        return 1;
+    }
     return _reload_wireless_config();
 }
 
@@ -677,6 +727,11 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
 
     pthread_mutex_lock(&_wlan_mutex);
 
+    if ((jparams = nakd_jsonrpc_params(jcmd)) == NULL ||
+        json_object_get_type(jparams) != json_type_object) {
+        goto params;
+    }
+
     json_object *jstore = NULL;
     json_object_object_get_ex(jparams, "store", &jstore);
     if (jstore != NULL) {
@@ -693,11 +748,6 @@ json_object *cmd_wlan_connect(json_object *jcmd, void *arg) {
                            "Internal error - no cached scan results,"
                                            " call wlan_scan first.");
         goto unlock;
-    }
-
-    if ((jparams = nakd_jsonrpc_params(jcmd)) == NULL ||
-        json_object_get_type(jparams) != json_type_object) {
-        goto params;
     }
 
     const char *ssid = nakd_net_ssid(jparams);
@@ -731,6 +781,39 @@ params:
     jresponse = nakd_jsonrpc_response_error(jcmd, INVALID_PARAMS,
                 "Invalid parameters - params should be an object"
                            " with \"ssid\" and \"key\" members");
+unlock:
+    pthread_mutex_unlock(&_wlan_mutex);
+    return jresponse;
+}
+
+json_object *cmd_configure_ap(json_object *jcmd, void *arg) {
+    json_object *jparams;
+    json_object *jresponse;
+    pthread_mutex_lock(&_wlan_mutex);
+
+    if ((jparams = nakd_jsonrpc_params(jcmd)) == NULL ||
+        json_object_get_type(jparams) != json_type_object) {
+        goto params;
+    }
+
+    if (_validate_ap_config(jparams))
+        goto params;
+
+    if (_configure_ap(jparams)) {
+        jresponse = nakd_jsonrpc_response_error(jcmd, INTERNAL_ERROR,
+                "Internal error - couldn't configure access point.");
+        goto unlock;
+    }
+
+    json_object *jresult = json_object_new_string("OK");
+    jresponse = nakd_jsonrpc_response_success(jcmd, jresult);
+    goto unlock;
+
+params:
+    jresponse = nakd_jsonrpc_response_error(jcmd, INVALID_PARAMS,
+           "Invalid parameters - params should be an object with"
+           " \"ssid\", \"key\", \"encryption\", and \"disabled\""
+                                                    " members.");
 unlock:
     pthread_mutex_unlock(&_wlan_mutex);
     return jresponse;
@@ -785,3 +868,15 @@ static struct nakd_command wlan_list_stored = {
     .module = &module_wlan
 };
 NAKD_DECLARE_COMMAND(wlan_list_stored);
+
+static struct nakd_command configure_ap = {
+    .name = "configure_ap",
+    .desc = "Configures the access point.",
+    .usage = "{\"jsonrpc\": \"2.0\", \"method\": \"configure_ap\", \"params\":"
+         " {\"ssid\": \"AP SSID\", \"key\": \"...\", \"encryption\": \"psk2\","
+                                              " \"disabled\": 0}, \"id\": 42}",
+    .handler = cmd_configure_ap,
+    .access = ACCESS_USER,
+    .module = &module_wlan
+};
+NAKD_DECLARE_COMMAND(configure_ap);

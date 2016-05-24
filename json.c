@@ -16,3 +16,12 @@ json_object *nakd_json_deepcopy(json_object *object) {
     json_tokener_free(jtok);
     return jresult;
 }
+
+const char *nakd_json_get_string(json_object *jobject, const char *key) {
+    json_object *jstr = NULL;
+    json_object_object_get_ex(jobject, key, &jstr);
+    if (jstr == NULL || json_object_get_type(jstr) != json_type_string)
+        return NULL;
+
+    return json_object_get_string(jstr);
+}
